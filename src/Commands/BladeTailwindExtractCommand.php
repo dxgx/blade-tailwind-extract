@@ -12,7 +12,7 @@ class BladeTailwindExtractCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'dgtool:blade-tailwind-extract
+    protected $signature = 'dg:blade-tailwind-extract
                             {mode : The operation mode: extract, inject, restore, e, or r}
                             {target : Target file, directory, or pattern to process}
                             {--css-file= : Override the CSS output file path}';
