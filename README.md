@@ -73,37 +73,49 @@ php artisan vendor:publish --tag=blade-tailwind-extract-config
 
 ### Extract Classes (Development → Production)
 
-Extract Tailwind classes from all views:
+The `target` parameter accepts multiple formats:
 
+**1. Directory (processes all .blade.php files recursively):**
 ```bash
 php artisan dgtool:blade-tailwind-extract extract ./resources/views
+php artisan dgtool:blade-tailwind-extract e ./resources/views/components
 ```
 
-Extract from a specific file:
-
+**2. Single file path:**
 ```bash
 php artisan dgtool:blade-tailwind-extract extract resources/views/livewire/garage/list/item.blade.php
+php artisan dgtool:blade-tailwind-extract e components/card.blade.php
 ```
 
-Extract using pattern matching:
-
+**3. Pattern matching (searches in configured search_path):**
 ```bash
 php artisan dgtool:blade-tailwind-extract e *preview*
+php artisan dgtool:blade-tailwind-extract e *card*.blade.php
+php artisan dgtool:blade-tailwind-extract e list-item
 ```
 
-Extract from multiple files (comma-separated):
-
+**4. Multiple targets (comma-separated, can mix patterns and files):**
 ```bash
 php artisan dgtool:blade-tailwind-extract e image-preview.blade.php,card-list.blade.php
+php artisan dgtool:blade-tailwind-extract e *preview*,*card*,header.blade.php
 ```
 
 ### Inject Classes (Production → Development)
 
-Restore Tailwind classes for editing:
+Restore Tailwind classes for editing (accepts same target formats as extract):
 
 ```bash
+# Directory
 php artisan dgtool:blade-tailwind-extract inject ./resources/views
-php artisan dgtool:blade-tailwind-extract r *preview*  # Short alias
+
+# Pattern
+php artisan dgtool:blade-tailwind-extract r *preview*  # 'r' is short alias for inject
+
+# Specific file
+php artisan dgtool:blade-tailwind-extract r components/card.blade.php
+
+# Multiple
+php artisan dgtool:blade-tailwind-extract inject *card*,*list*
 ```
 
 ### Workflow
