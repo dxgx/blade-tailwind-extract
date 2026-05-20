@@ -15,13 +15,16 @@ A Laravel package (command) that extracts Tailwind CSS classes from Blade templa
 # Extract (inline → compact)
 php artisan dg:blade-tailwind-extract extract {target}
 php artisan dg:blade-tailwind-extract e {target}  # alias
+php artisan dg:blade-tailwind-extract e           # no target = all files with confirmation
 
 # Inject (compact → inline)
 php artisan dg:blade-tailwind-extract inject {target}
 php artisan dg:blade-tailwind-extract r {target}  # alias (restore)
+php artisan dg:blade-tailwind-extract r           # no target = all files with confirmation
 ```
 
 **Target formats:**
+- No target: Processes all files in `search_path` (with double confirmation prompts)
 - Directory: `./resources/views` (recursive)
 - File: `resources/views/components/card.blade.php`
 - Pattern: `*preview*`, `*card*.blade.php`

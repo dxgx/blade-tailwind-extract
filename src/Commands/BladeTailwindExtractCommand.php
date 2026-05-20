@@ -5,6 +5,9 @@ namespace Dxgx\BladeTailwindExtract\Commands;
 use Dxgx\BladeTailwindExtract\TailwindExtractorService;
 use Illuminate\Console\Command;
 
+//TODO: somehow need to prevent adding non Tailwind classes, for example if there is class="__test__ fa fa-eye text-green-500 animate-pulse top-0 left-0 w-4 h-4 cursor-pointer;  __ tool should stop saying that fa fa-eye is not Tailwind class."
+
+
 class BladeTailwindExtractCommand extends Command
 {
     /**
@@ -14,7 +17,7 @@ class BladeTailwindExtractCommand extends Command
      */
     protected $signature = 'dg:blade-tailwind-extract
                             {mode : The operation mode: extract, inject, restore, e, or r}
-                            {target : Target to process. Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php}
+                            {target? : Target to process. Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php. If omitted, processes all files in search_path}
                             {--css-file= : Override the CSS output file path}';
 
     /**
@@ -55,6 +58,26 @@ class BladeTailwindExtractCommand extends Command
             $this->error('Invalid mode. Use: extract, inject, restore, e, or r');
 
             return self::FAILURE;
+        }
+
+        // If no target provided, process all files with confirmation
+        if ($target === null) {
+            $searchPath = config('blade-tailwind-extract.search_path');
+            $files = $this->findAllBladeFiles($searchPath);
+            
+            if (empty($files)) {
+                $this->warn("⚠️  No .blade.php files found in: $searchPath");
+                return self::SUCCESS;
+            }
+            
+            // Show confirmation and file list
+            if (!$this->confirmBulkOperation($mode, $files)) {
+                $this->comment('Operation cancelled.');
+                return self::SUCCESS;
+            }
+            
+            // Use search_path as the target
+            $target = $searchPath;
         }
 
         try {
@@ -128,5 +151,84 @@ class BladeTailwindExtractCommand extends Command
         $this->comment('💡 Tip: Run with "extract" or "e" mode to re-extract after editing');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Find all .blade.php files recursively in the given directory
+     */
+    protected function findAllBladeFiles(string $directory): array
+    {
+        if (!is_dir($directory)) {
+            return [];
+        }
+
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        $ignoredDirs = config('blade-tailwind-extract.ignored_directories', []);
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php' && str_ends_with($file->getFilename(), '.blade.php')) {
+                $filePath = $file->getPathname();
+                
+                // Check if file is in an ignored directory
+                $shouldIgnore = false;
+                foreach ($ignoredDirs as $ignoredDir) {
+                    if (str_contains($filePath, $ignoredDir)) {
+                        $shouldIgnore = true;
+                        break;
+                    }
+                }
+                
+                if (!$shouldIgnore) {
+                    $files[] = $filePath;
+                }
+            }
+        }
+
+        sort($files);
+        return $files;
+    }
+
+    /**
+     * Show confirmation prompts and file list for bulk operations
+     */
+    protected function confirmBulkOperation(string $mode, array $files): bool
+    {
+        $fileCount = count($files);
+        $operationName = $mode === 'extract' ? 'extract Tailwind classes from' : 'inject Tailwind classes into';
+
+        $this->newLine();
+        $this->warn("⚠️  You are about to $operationName ALL files in search_path");
+        $this->newLine();
+
+        // First confirmation
+        if (!$this->confirm("Are you sure you want to process $fileCount file(s)?", false)) {
+            return false;
+        }
+
+        $this->newLine();
+        $this->info("📄 Files to be processed:");
+        $this->newLine();
+
+        // Display file list (max 50)
+        $displayLimit = 50;
+        $filesToShow = array_slice($files, 0, $displayLimit);
+        
+        foreach ($filesToShow as $file) {
+            $this->line("   • " . $file);
+        }
+
+        if ($fileCount > $displayLimit) {
+            $remaining = $fileCount - $displayLimit;
+            $this->line("   ... and $remaining more file(s)");
+        }
+
+        $this->newLine();
+
+        // Second confirmation
+        return $this->confirm("Proceed with $mode operation on these files?", false);
     }
 }

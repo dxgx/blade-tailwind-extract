@@ -75,6 +75,19 @@ php artisan vendor:publish --tag=blade-tailwind-extract-config
 
 The `target` parameter accepts multiple formats:
 
+**0. No target (processes all files in search_path with confirmation):**
+```bash
+# Prompts for confirmation before processing all .blade.php files
+php artisan dgtool:blade-tailwind-extract extract
+php artisan dgtool:blade-tailwind-extract e
+
+# Shows:
+# 1. First confirmation: "Are you sure you want to process X file(s)?"
+# 2. List of files to be processed (max 50 shown)
+# 3. Second confirmation: "Proceed with extract operation?"
+# Cancel at any prompt to abort
+```
+
 **1. Directory (processes all .blade.php files recursively):**
 ```bash
 php artisan dgtool:blade-tailwind-extract extract ./resources/views
@@ -105,11 +118,15 @@ php artisan dgtool:blade-tailwind-extract e *preview*,*card*,header.blade.php
 Restore Tailwind classes for editing (accepts same target formats as extract):
 
 ```bash
+# No target (with confirmation prompts)
+php artisan dgtool:blade-tailwind-extract inject
+php artisan dgtool:blade-tailwind-extract r  # 'r' is short alias for inject
+
 # Directory
 php artisan dgtool:blade-tailwind-extract inject ./resources/views
 
 # Pattern
-php artisan dgtool:blade-tailwind-extract r *preview*  # 'r' is short alias for inject
+php artisan dgtool:blade-tailwind-extract r *preview*
 
 # Specific file
 php artisan dgtool:blade-tailwind-extract r components/card.blade.php
