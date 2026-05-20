@@ -57,10 +57,10 @@ The `a40f` hash is derived from the file path, ensuring no conflicts between fil
 
 ## Installation
 
-Install via Composer:
+Install via Composer as a dev dependency (this is a development tool, not needed in production):
 
 ```bash
-composer require dxgx/blade-tailwind-extract
+composer require dxgx/blade-tailwind-extract --dev
 ```
 
 Publish the configuration file (optional):
