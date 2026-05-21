@@ -12,7 +12,7 @@ class BladeTailwindExtractCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'dg:blade-tailwind-extract
+    protected $signature = 'dg:blade-tailwind:extract
                             {mode : The operation mode: extract, inject, restore, e, or r}
                             {target? : Target to process (optional). Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php. If omitted, processes all files in search_path}
                             {--css-file= : Override the CSS output file path}
