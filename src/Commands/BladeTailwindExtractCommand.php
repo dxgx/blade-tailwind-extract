@@ -17,8 +17,9 @@ class BladeTailwindExtractCommand extends Command
      */
     protected $signature = 'dg:blade-tailwind-extract
                             {mode : The operation mode: extract, inject, restore, e, or r}
-                            {target? : Target to process. Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php. If omitted, processes all files in search_path}
-                            {--css-file= : Override the CSS output file path}';
+                            {target? : Target to process (optional). Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php. If omitted, processes all files in search_path}
+                            {--css-file= : Override the CSS output file path}
+                            {--yy : Skip all confirmations when processing all files (no target)}';
 
     /**
      * The console command description.
@@ -70,8 +71,9 @@ class BladeTailwindExtractCommand extends Command
                 return self::SUCCESS;
             }
             
-            // Show confirmation and file list
-            if (!$this->confirmBulkOperation($mode, $files)) {
+            // Show confirmation and file list (skip if --yy flag is provided)
+            $skipConfirmations = $this->option('yy');
+            if (!$this->confirmBulkOperation($mode, $files, $searchPath, $skipConfirmations)) {
                 $this->comment('Operation cancelled.');
                 return self::SUCCESS;
             }
@@ -195,13 +197,18 @@ class BladeTailwindExtractCommand extends Command
     /**
      * Show confirmation prompts and file list for bulk operations
      */
-    protected function confirmBulkOperation(string $mode, array $files): bool
+    protected function confirmBulkOperation(string $mode, array $files, string $searchPath, bool $skipConfirmations = false): bool
     {
+        // Skip all confirmations if --yy flag is provided
+        if ($skipConfirmations) {
+            return true;
+        }
+
         $fileCount = count($files);
         $operationName = $mode === 'extract' ? 'extract Tailwind classes from' : 'inject Tailwind classes into';
 
         $this->newLine();
-        $this->warn("⚠️  You are about to $operationName ALL files in search_path");
+        $this->warn("⚠️  You are about to $operationName ALL files in: $searchPath");
         $this->newLine();
 
         // First confirmation

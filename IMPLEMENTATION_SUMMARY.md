@@ -52,7 +52,7 @@ php artisan dg:blade-tailwind-extract e *preview*
 Run the test suite to verify:
 ```bash
 composer install  # If dependencies not installed
-./vendor/bin/pest --filter=CommandTest
+./vendor/bin/phpunit --filter=CommandTest
 ```
 
 Tests cover:

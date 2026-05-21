@@ -4,12 +4,6 @@ A Laravel package (command) that extracts Tailwind CSS classes from Blade templa
 
 ## Quick Reference
 
-### Testing
-```bash
-./vendor/bin/pest
-```
-**Critical:** Use `./vendor/bin/pest` directly, NOT `php artisan test` or `composer test`.
-
 ### Command Usage
 ```bash
 # Extract (inline → compact)
@@ -64,7 +58,7 @@ src/
 
 ### When Adding Features
 1. Write test in `tests/Feature/`
-2. Run `./vendor/bin/pest --filter=<test-name>`
+2. Run `./vendor/bin/phpunit --filter=<test-name>`
 3. Implement in `TailwindExtractorService.php` or command
 4. Update [README.md](README.md) with new usage patterns
 

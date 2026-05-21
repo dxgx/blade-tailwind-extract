@@ -146,3 +146,28 @@ it('handles empty search path gracefully', function () {
     // Clean up
     File::deleteDirectory($emptyPath);
 });
+
+it('skips all confirmations when --yy flag is provided', function () {
+    // Override config for this test
+    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    
+    // Create test blade files
+    File::put($this->testViewPath . '/file1.blade.php', '<div class="__test__ bg-red-500 __"></div>');
+    File::put($this->testViewPath . '/file2.blade.php', '<div class="__test__ bg-blue-500 __"></div>');
+    
+    // Should not prompt for any confirmations
+    $this->artisan(BladeTailwindExtractCommand::class, [
+        'mode' => 'extract',
+        '--css-file' => $this->testCssPath,
+        '--yy' => true,
+    ])
+    ->doesntExpectOutput('Operation cancelled.')
+    ->assertSuccessful();
+    
+    // Verify CSS file was created
+    expect(File::exists($this->testCssPath))->toBeTrue();
+    
+    // Clean up
+    File::delete($this->testViewPath . '/file1.blade.php');
+    File::delete($this->testViewPath . '/file2.blade.php');
+});
