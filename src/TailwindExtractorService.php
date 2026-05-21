@@ -147,9 +147,38 @@ class TailwindExtractorService
     }
 
     /**
+     * Check if a file contains extractable patterns (__name__ classes __)
+     */
+    public function hasExtractablePatterns(string $filePath): bool
+    {
+        if (!file_exists($filePath)) {
+            return false;
+        }
+
+        $content = file_get_contents($filePath);
+
+        // Check for patterns in class="" attributes
+        if (preg_match('/class="[^"]*?__([a-zA-Z0-9\-_]+)__.*?__[^"]*?"/', $content)) {
+            return true;
+        }
+
+        // Check for patterns in ->class([...]) method calls
+        if (preg_match('/->class\(\[.*?__([a-zA-Z0-9\-_]+)__.*?__.*?\]\)/s', $content)) {
+            return true;
+        }
+
+        // Check for patterns in @class([...]) directive calls
+        if (preg_match('/@class\(\[.*?__([a-zA-Z0-9\-_]+)__.*?__.*?\]\)/s', $content)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Get all blade files matching the target
      */
-    protected function getBladeFiles(string $path): array
+    public function getBladeFiles(string $path): array
     {
         // Check if it's a comma-separated list
         if (str_contains($path, ',')) {

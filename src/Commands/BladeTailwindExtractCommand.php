@@ -5,9 +5,6 @@ namespace Dxgx\BladeTailwindExtract\Commands;
 use Dxgx\BladeTailwindExtract\TailwindExtractorService;
 use Illuminate\Console\Command;
 
-//TODO: somehow need to prevent adding non Tailwind classes, for example if there is class="__test__ fa fa-eye text-green-500 animate-pulse top-0 left-0 w-4 h-4 cursor-pointer;  __ tool should stop saying that fa fa-eye is not Tailwind class."
-
-
 class BladeTailwindExtractCommand extends Command
 {
     /**
@@ -102,6 +99,31 @@ class BladeTailwindExtractCommand extends Command
     {
         $this->info("🔍 Extracting Tailwind classes from: $target");
         $this->newLine();
+
+        // Run PHP lint check on all files
+        $files = $this->extractor->getBladeFiles($target);
+        if (!empty($files)) {
+            $this->info("🔧 Running PHP syntax check...");
+            $lintErrors = $this->lintPhpFiles($files);
+            
+            if (!empty($lintErrors)) {
+                $this->newLine();
+                $this->error("❌ PHP syntax errors found in " . count($lintErrors) . " file(s):");
+                $this->newLine();
+                
+                foreach ($lintErrors as $file => $error) {
+                    $this->line("   • " . $file);
+                    $this->line("     " . trim($error));
+                }
+                
+                $this->newLine();
+                $this->error("Fix syntax errors before extracting.");
+                return self::FAILURE;
+            }
+            
+            $this->info("✓ All files passed PHP syntax check");
+            $this->newLine();
+        }
 
         $result = $this->extractor->extract($target, $cssFile);
 
@@ -216,20 +238,38 @@ class BladeTailwindExtractCommand extends Command
             return false;
         }
 
+        // For extract mode, filter files to show only those with extractable patterns
+        $filesToShow = $files;
+        if ($mode === 'extract') {
+            $filesToShow = array_filter($files, function($file) {
+                return $this->extractor->hasExtractablePatterns($file);
+            });
+            
+            if (empty($filesToShow)) {
+                $this->warn('⚠️  No files found with extractable patterns (__name__ classes __)');
+                return false;
+            }
+        }
+
         $this->newLine();
         $this->info("📄 Files to be processed:");
+        if ($mode === 'extract') {
+            $filteredCount = count($filesToShow);
+            $this->comment("   (Showing only $filteredCount file(s) with extractable patterns)");
+        }
         $this->newLine();
 
         // Display file list (max 50)
         $displayLimit = 50;
-        $filesToShow = array_slice($files, 0, $displayLimit);
+        $displayFiles = array_slice($filesToShow, 0, $displayLimit);
         
-        foreach ($filesToShow as $file) {
+        foreach ($displayFiles as $file) {
             $this->line("   • " . $file);
         }
 
-        if ($fileCount > $displayLimit) {
-            $remaining = $fileCount - $displayLimit;
+        $showCount = count($filesToShow);
+        if ($showCount > $displayLimit) {
+            $remaining = $showCount - $displayLimit;
             $this->line("   ... and $remaining more file(s)");
         }
 
@@ -237,5 +277,30 @@ class BladeTailwindExtractCommand extends Command
 
         // Second confirmation
         return $this->confirm("Proceed with $mode operation on these files?", false);
+    }
+
+    /**
+     * Lint PHP files for syntax errors
+     * 
+     * @param array $files Array of file paths to check
+     * @return array Array of files with errors (file => error message)
+     */
+    protected function lintPhpFiles(array $files): array
+    {
+        $errors = [];
+        
+        foreach ($files as $file) {
+            $output = [];
+            $returnCode = 0;
+            
+            // Run php -l to check syntax
+            exec("php -l " . escapeshellarg($file) . " 2>&1", $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                $errors[$file] = implode("\n", $output);
+            }
+        }
+        
+        return $errors;
     }
 }

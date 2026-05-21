@@ -37,7 +37,9 @@ src/
 ### Core Flow
 
 1. **Extract Mode** (`extract`/`e`):
+   - Runs PHP syntax check (`php -l`) on all files before processing
    - Finds `__name__ tailwind classes __` patterns in Blade files
+   - When no target specified, filters file list to show only files with extractable patterns
    - Generates CSS class: `{PREFIX}-{HASH}-{NAME}` (e.g., `TW-a40f-card-wrapper`)
    - Writes `@apply` rules to CSS file
    - Replaces inline classes with generated name
@@ -46,6 +48,13 @@ src/
    - Reads `@apply` rules from CSS file
    - Finds generated class names in Blade files
    - Restores original Tailwind class strings
+
+### Validation & Safety Features
+
+- **PHP Lint Check**: Before extraction, all PHP files are validated using `php -l` to catch syntax errors
+- **Smart File Filtering**: When extracting without target, only files with `__name__ classes __` patterns are shown in the confirmation list
+- **Double Confirmation**: When processing all files (no target), prompts twice for safety
+- **Skip Flag**: `--yy` flag bypasses all confirmations for automated workflows
 
 ### Key Design Decisions
 
@@ -67,11 +76,22 @@ src/
   - `extractFromClassAttributes()` - handles `class=""`
   - `extractFromClassMethod()` - handles `->class([])`
   - `extractFromAtClassDirective()` - handles `@class([])`
+  - `hasExtractablePatterns()` - checks if file contains patterns to extract
+  - `getBladeFiles()` - public method to retrieve files for a target
 - All use regex to find `__name__ classes __` pattern
 - Protected by `$maxIterations` config to prevent infinite loops
 
-### When Updating Configuration
-- Edit `config/blade-tailwind-extract.php`
+### When Modifying Command Logic
+- Main methods in `BladeTailwindExtractCommand`:
+  - `lintPhpFiles()` - runs `php -l` on files to check syntax
+  - `confirmBulkOperation()` - handles file filtering and double confirmation
+  - File filtering uses `hasExtractablePatterns()` for extract mode
+  - LPHP syntax must be valid** - all files are linted before extraction; errors will halt the process
+2. **Never extract `group` or `peer` classes** - they're in `reserved_classes` config
+3. **File renaming breaks hashes** - user must inject → move → extract
+4. **Generated classes (`TW-*`) are sacred** - never manually edit
+5. **CSS and Blade must sync** - both files should be committed together
+6. **Pattern filtering** - bulk extraction only shows/processes files with `__name__ classes __` patterns
 - Document changes in README's Configuration section
 - Add test coverage for new config values
 
