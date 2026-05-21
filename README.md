@@ -78,8 +78,7 @@ The `target` parameter accepts multiple formats:
 **0. No target (processes all files in search_path with confirmation):**
 ```bash
 # Prompts for confirmation before processing all .blade.php files
-php artisan dgtool:blade-tailwind-extract extract
-php artisan dgtool:blade-tailwind-extract e
+php artisan dg:blade-tailwind:extract
 
 # Shows:
 # 1. First confirmation: "Are you sure you want to process X file(s)?"
@@ -90,54 +89,53 @@ php artisan dgtool:blade-tailwind-extract e
 
 **1. Directory (processes all .blade.php files recursively):**
 ```bash
-php artisan dgtool:blade-tailwind-extract extract ./resources/views
-php artisan dgtool:blade-tailwind-extract e ./resources/views/components
+php artisan dg:blade-tailwind:extract ./resources/views
+php artisan dg:blade-tailwind:extract ./resources/views/components
 ```
 
 **2. Single file path:**
 ```bash
-php artisan dgtool:blade-tailwind-extract extract resources/views/livewire/garage/list/item.blade.php
-php artisan dgtool:blade-tailwind-extract e components/card.blade.php
+php artisan dg:blade-tailwind:extract resources/views/livewire/garage/list/item.blade.php
+php artisan dg:blade-tailwind:extract components/card.blade.php
 ```
 
 **3. Pattern matching (searches in configured search_path):**
 ```bash
-php artisan dgtool:blade-tailwind-extract e *preview*
-php artisan dgtool:blade-tailwind-extract e *card*.blade.php
-php artisan dgtool:blade-tailwind-extract e list-item
+php artisan dg:blade-tailwind:extract *preview*
+php artisan dg:blade-tailwind:extract *card*.blade.php
+php artisan dg:blade-tailwind:extract list-item
 ```
 
 **4. Multiple targets (comma-separated, can mix patterns and files):**
 ```bash
-php artisan dgtool:blade-tailwind-extract e image-preview.blade.php,card-list.blade.php
-php artisan dgtool:blade-tailwind-extract e *preview*,*card*,header.blade.php
+php artisan dg:blade-tailwind:extract image-preview.blade.php,card-list.blade.php
+php artisan dg:blade-tailwind:extract *preview*,*card*,header.blade.php
 ```
 
-### Inject Classes (Production → Development)
+### Restore Classes (Production → Development)
 
 Restore Tailwind classes for editing (accepts same target formats as extract):
 
 ```bash
 # No target (with confirmation prompts)
-php artisan dgtool:blade-tailwind-extract inject
-php artisan dgtool:blade-tailwind-extract r  # 'r' is short alias for inject
+php artisan dg:blade-tailwind:restore
 
 # Directory
-php artisan dgtool:blade-tailwind-extract inject ./resources/views
+php artisan dg:blade-tailwind:restore ./resources/views
 
 # Pattern
-php artisan dgtool:blade-tailwind-extract r *preview*
+php artisan dg:blade-tailwind:restore *preview*
 
 # Specific file
-php artisan dgtool:blade-tailwind-extract r components/card.blade.php
+php artisan dg:blade-tailwind:restore components/card.blade.php
 
 # Multiple
-php artisan dgtool:blade-tailwind-extract inject *card*,*list*
+php artisan dg:blade-tailwind:restore *card*,*list*
 ```
 
 ### Workflow
 
-1. **Inject** before editing (restore Tailwind classes to inline format)
+1. **Restore** before editing (restore Tailwind classes to inline format)
 2. **Edit** your Blade files normally
 3. **Extract** after editing (compact back to short class names)
 4. **Commit** both Blade files and CSS file
@@ -204,7 +202,7 @@ return [
 ### Custom CSS Output Path
 
 ```bash
-php artisan dgtool:blade-tailwind-extract extract ./resources/views --css-file=resources/css/my-custom.css
+php artisan dg:blade-tailwind:extract ./resources/views --css-file=resources/css/my-custom.css
 ```
 
 ### Working with Livewire Components
@@ -231,7 +229,7 @@ The tool works seamlessly with Livewire's `->class([...])` method and Blade's `@
 
 The hash is based on the file path. If you rename or move a Blade file:
 
-1. Inject the file first (restore classes)
+1. Restore the file first (restore classes)
 2. Move/rename the file
 3. Extract again (generates new hash)
 
@@ -243,7 +241,7 @@ The hash is based on the file path. If you rename or move a Blade file:
    - Writes `@apply` rules to the CSS file
    - Replaces inline classes with short names
 
-2. **Inject Mode:**
+2. **Restore Mode:**
    - Reads existing `@apply` rules from CSS file
    - Finds short class names in Blade files
    - Restores original Tailwind class strings
@@ -256,11 +254,11 @@ The hash is based on the file path. If you rename or move a Blade file:
 ## Gotchas & Best Practices
 
 - ⚠️ Never manually edit `TW-*` class names in extracted files
-- ⚠️ Always inject → edit → extract workflow
+- ⚠️ Always restore → edit → extract workflow
 - ⚠️ Don't extract `group`, `peer`, or other parent-modifier classes
 - ✅ Commit both Blade and CSS files together
 - ✅ Run extract before deploying to production
-- ✅ Run inject before starting development
+- ✅ Run restore before starting development
 
 ## Testing
 

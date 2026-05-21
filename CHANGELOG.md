@@ -2,6 +2,26 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.0.0 - 2026-05-21
+
+### BREAKING CHANGES
+- Split single command into two separate commands:
+  - `dg:blade-tailwind:extract` - for extraction only (replaces old `dg:blade-tailwind-extract extract` and `e` alias)
+  - `dg:blade-tailwind:restore` - for restoration only (replaces old `dg:blade-tailwind-extract inject` and `r` alias)
+- Removed mode argument from commands (no longer needed with separate commands)
+- Updated service provider to register both commands
+
+### Added
+- New `BladeTailwindRestoreCommand` class for restoration operations
+- New `HandlesBulkOperations` trait for shared command functionality
+- Improved command structure with better separation of concerns
+
+### Changed
+- Refactored `BladeTailwindExtractCommand` to handle extraction only
+- Moved shared command methods to `HandlesBulkOperations` trait
+- Updated all documentation to reflect new command structure
+- Updated tip messages to reference new command names
+
 ## 1.1.1 - 2026-05-21
 
 ### Changed

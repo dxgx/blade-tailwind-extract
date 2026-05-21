@@ -1,6 +1,7 @@
 <?php
 
 use Dxgx\BladeTailwindExtract\Commands\BladeTailwindExtractCommand;
+use Dxgx\BladeTailwindExtract\Commands\BladeTailwindRestoreCommand;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
@@ -25,7 +26,6 @@ it('can run extract command with a specific target', function () {
     File::put($testFile, '<div class="__wrapper__ flex items-center __"></div>');
     
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         'target' => $testFile,
         '--css-file' => $this->testCssPath,
     ])
@@ -47,7 +47,6 @@ it('prompts for confirmation when no target is provided', function () {
     File::put($this->testViewPath . '/file2.blade.php', '<div class="__test__ bg-blue-500 __"></div>');
     
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         '--css-file' => $this->testCssPath,
     ])
     ->expectsQuestion('Are you sure you want to process 2 file(s)?', 'no')
@@ -67,7 +66,6 @@ it('proceeds with operation when both confirmations are accepted', function () {
     File::put($this->testViewPath . '/file1.blade.php', '<div class="__test__ bg-red-500 __"></div>');
     
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         '--css-file' => $this->testCssPath,
     ])
     ->expectsQuestion('Are you sure you want to process 1 file(s)?', 'yes')
@@ -93,7 +91,6 @@ it('shows file list in confirmation prompt', function () {
     File::put($file2, '<div class="__test__ bg-blue-500 __"></div>');
     
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         '--css-file' => $this->testCssPath,
     ])
     ->expectsQuestion('Are you sure you want to process 2 file(s)?', 'yes')
@@ -106,7 +103,7 @@ it('shows file list in confirmation prompt', function () {
     File::delete($file2);
 });
 
-it('works with inject mode without target parameter', function () {
+it('works with restore command without target parameter', function () {
     // Override config for this test
     config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
     
@@ -117,12 +114,11 @@ it('works with inject mode without target parameter', function () {
     // Create CSS file with the rule
     File::put($this->testCssPath, ".TW-a40f-test {\n    @apply bg-red-500;\n}");
     
-    $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'inject',
+    $this->artisan(BladeTailwindRestoreCommand::class, [
         '--css-file' => $this->testCssPath,
     ])
     ->expectsQuestion('Are you sure you want to process 1 file(s)?', 'yes')
-    ->expectsQuestion('Proceed with inject operation on these files?', 'yes')
+    ->expectsQuestion('Proceed with restore operation on these files?', 'yes')
     ->assertSuccessful();
     
     // Clean up
@@ -137,7 +133,6 @@ it('handles empty search path gracefully', function () {
     File::ensureDirectoryExists($emptyPath);
     
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         '--css-file' => $this->testCssPath,
     ])
     ->expectsOutput("⚠️  No .blade.php files found in: $emptyPath")
@@ -157,7 +152,6 @@ it('skips all confirmations when --yy flag is provided', function () {
     
     // Should not prompt for any confirmations
     $this->artisan(BladeTailwindExtractCommand::class, [
-        'mode' => 'extract',
         '--css-file' => $this->testCssPath,
         '--yy' => true,
     ])

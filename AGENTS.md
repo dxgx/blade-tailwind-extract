@@ -7,14 +7,10 @@ A Laravel package (command) that extracts Tailwind CSS classes from Blade templa
 ### Command Usage
 ```bash
 # Extract (inline → compact)
-php artisan dg:blade-tailwind-extract extract {target}
-php artisan dg:blade-tailwind-extract e {target}  # alias
-php artisan dg:blade-tailwind-extract e           # no target = all files with confirmation
+php artisan dg:blade-tailwind:extract {target}
 
-# Inject (compact → inline)
-php artisan dg:blade-tailwind-extract inject {target}
-php artisan dg:blade-tailwind-extract r {target}  # alias (restore)
-php artisan dg:blade-tailwind-extract r           # no target = all files with confirmation
+# Restore (compact → inline)
+php artisan dg:blade-tailwind:restore {target}
 ```
 
 **Target formats:**
@@ -28,15 +24,18 @@ php artisan dg:blade-tailwind-extract r           # no target = all files with c
 
 ```
 src/
-├── BladeTailwindExtractServiceProvider.php  # Laravel integration
+├── BladeTailwindExtractServiceProvider.php  # Laravel integration (registers both commands)
 ├── TailwindExtractorService.php             # Core extraction/injection logic
 └── Commands/
-    └── BladeTailwindExtractCommand.php      # Artisan command handler
+    ├── BladeTailwindExtractCommand.php      # Extract command (inline → compact)
+    ├── BladeTailwindRestoreCommand.php      # Restore command (compact → inline)
+    └── Concerns/
+        └── HandlesBulkOperations.php        # Shared trait for file operations
 ```
 
 ### Core Flow
 
-1. **Extract Mode** (`extract`/`e`):
+1. **Extract Command** (`dg:blade-tailwind:extract`):
    - Runs PHP syntax check (`php -l`) on all files before processing
    - Finds `__name__ tailwind classes __` patterns in Blade files
    - When no target specified, filters file list to show only files with extractable patterns
@@ -44,7 +43,7 @@ src/
    - Writes `@apply` rules to CSS file
    - Replaces inline classes with generated name
 
-2. **Inject Mode** (`inject`/`r`):
+2. **Restore Command** (`dg:blade-tailwind:restore`):
    - Reads `@apply` rules from CSS file
    - Finds generated class names in Blade files
    - Restores original Tailwind class strings
@@ -83,10 +82,21 @@ src/
 
 ### When Modifying Command Logic
 - Main methods in `BladeTailwindExtractCommand`:
-  - `lintPhpFiles()` - runs `php -l` on files to check syntax
-  - `confirmBulkOperation()` - handles file filtering and double confirmation
-  - File filtering uses `hasExtractablePatterns()` for extract mode
-  - LPHP syntax must be valid** - all files are linted before extraction; errors will halt the process
+  - `handleExtract()` - processes extraction logic
+  - `lintPhpFiles()` - runs `php -l` on files to check syntax (from trait)
+  - `confirmBulkOperation()` - handles file filtering and double confirmation (from trait)
+  
+- Main methods in `BladeTailwindRestoreCommand`:
+  - `handleRestore()` - processes restoration logic
+  - Uses same trait methods for bulk operations
+  
+- **Shared trait** (`HandlesBulkOperations`):
+  - `findAllBladeFiles()` - recursively finds .blade.php files
+  - `confirmBulkOperation()` - shows file list and double confirmation
+  - `lintPhpFiles()` - validates PHP syntax
+  
+- File filtering uses `hasExtractablePatterns()` for extract command
+- **PHP syntax must be valid** - all files are linted before extraction; errors will halt the process
 2. **Never extract `group` or `peer` classes** - they're in `reserved_classes` config
 3. **File renaming breaks hashes** - user must inject → move → extract
 4. **Generated classes (`TW-*`) are sacred** - never manually edit
@@ -98,7 +108,7 @@ src/
 ## Critical Constraints
 
 1. **Never extract `group` or `peer` classes** - they're in `reserved_classes` config
-2. **File renaming breaks hashes** - user must inject → move → extract
+2. **File renaming breaks hashes** - user must restore → move → extract
 3. **Generated classes (`TW-*`) are sacred** - never manually edit
 4. **CSS and Blade must sync** - both files should be committed together
 
