@@ -162,7 +162,7 @@ After extraction:
 
 ## Configuration
 
-Configuration file: `config/blade-tailwind-extract.php`
+Configuration file: `config/dg-blade-tailwind-extract.php`
 
 ```php
 return [

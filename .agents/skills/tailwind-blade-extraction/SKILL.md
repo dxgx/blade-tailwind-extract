@@ -101,7 +101,7 @@ Use the special `__name__ classes __` syntax to mark classes for extraction:
 
 - The package automatically detects and **skips** extractions containing `group` or `peer`
 - You'll see a **warning** when attempting to extract these
-- Defined in `config/blade-tailwind-extract.php` under `reserved_classes`
+- Defined in `config/dg-blade-tailwind-extract.php` under `reserved_classes`
 
 ## When to Extract vs Keep Inline
 
@@ -249,7 +249,7 @@ Same name (`wrapper`) but different files = different generated classes.
 ### Hash Characteristics
 
 - **Derived from file path** - Consistent for the same file
-- **4 characters by default** - Configurable in `config/blade-tailwind-extract.php`
+- **4 characters by default** - Configurable in `config/dg-blade-tailwind-extract.php`
 - **Deterministic** - Same file always produces same hash
 
 ### Important: File Renaming
@@ -265,7 +265,7 @@ Otherwise, your CSS and Blade files will be out of sync.
 
 ### Key Config Options
 
-**File:** `config/blade-tailwind-extract.php`
+**File:** `config/dg-blade-tailwind-extract.php`
 
 ```php
 return [

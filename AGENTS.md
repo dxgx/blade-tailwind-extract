@@ -114,7 +114,7 @@ src/
 
 ## Configuration Reference
 
-See [config/blade-tailwind-extract.php](config/blade-tailwind-extract.php) for:
+See [config/dg-blade-tailwind-extract.php](config/dg-blade-tailwind-extract.php) for:
 - `css_output_path` - where CSS file is generated
 - `class_prefix` - default `TW`
 - `hash_length` - default 4 characters

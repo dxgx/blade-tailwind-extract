@@ -24,7 +24,7 @@ trait HandlesBulkOperations
             new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
-        $ignoredDirs = config('blade-tailwind-extract.ignored_directories', []);
+        $ignoredDirs = config('dg-blade-tailwind-extract.ignored_directories', []);
 
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php' && str_ends_with($file->getFilename(), '.blade.php')) {

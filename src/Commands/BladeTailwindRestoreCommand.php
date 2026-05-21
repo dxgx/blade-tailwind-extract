@@ -44,11 +44,11 @@ class BladeTailwindRestoreCommand extends Command
     public function handle(): int
     {
         $target = $this->argument('target');
-        $cssFile = $this->option('css-file') ?? config('blade-tailwind-extract.css_output_path');
+        $cssFile = $this->option('css-file') ?? config('dg-blade-tailwind-extract.css_output_path');
 
         // If no target provided, process all files with confirmation
         if ($target === null) {
-            $searchPath = config('blade-tailwind-extract.search_path');
+            $searchPath = config('dg-blade-tailwind-extract.search_path');
             $files = $this->findAllBladeFiles($searchPath);
             
             if (empty($files)) {

@@ -9,6 +9,6 @@ it('can instantiate the service', function () {
 });
 
 it('loads the configuration correctly', function () {
-    expect(config('blade-tailwind-extract.class_prefix'))->toBe('TW');
-    expect(config('blade-tailwind-extract.hash_length'))->toBe(4);
+    expect(config('dg-blade-tailwind-extract.class_prefix'))->toBe('TW');
+    expect(config('dg-blade-tailwind-extract.hash_length'))->toBe(4);
 });

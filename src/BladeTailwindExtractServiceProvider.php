@@ -14,12 +14,12 @@ class BladeTailwindExtractServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../config/blade-tailwind-extract.php',
-            'blade-tailwind-extract'
+            __DIR__ . '/../config/dg-blade-tailwind-extract.php',
+            'dg-blade-tailwind-extract'
         );
 
         $this->app->singleton(TailwindExtractorService::class, function ($app) {
-            return new TailwindExtractorService($app['config']['blade-tailwind-extract']);
+            return new TailwindExtractorService($app['config']['dg-blade-tailwind-extract']);
         });
     }
 
@@ -30,8 +30,8 @@ class BladeTailwindExtractServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/blade-tailwind-extract.php' => config_path('blade-tailwind-extract.php'),
-            ], 'blade-tailwind-extract-config');
+                __DIR__ . '/../config/dg-blade-tailwind-extract.php' => config_path('dg-blade-tailwind-extract.php'),
+            ], 'dg-blade-tailwind-extract-config');
 
             $this->commands([
                 BladeTailwindExtractCommand::class,
