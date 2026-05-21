@@ -2,6 +2,11 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 1.1.1 - 2026-05-21
+
+### Changed
+- Updated dependencies
+
 ## 1.1.0 - 2026-05-21
 
 ### Added
