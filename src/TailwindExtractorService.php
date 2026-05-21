@@ -342,7 +342,7 @@ class TailwindExtractorService
      */
     protected function assertValidApplyContent(string $apply, string $name, string $file, string $originalContent = ''): void
     {
-        if (preg_match('/[^a-zA-Z0-9\-\/\:\_\.\[\]!\s]/', $apply, $badMatch, PREG_OFFSET_CAPTURE)) {
+        if (preg_match('/[^a-zA-Z0-9\-\/:\_\.\[\]!\(\)\s]/', $apply, $badMatch, PREG_OFFSET_CAPTURE)) {
             $badChar = $badMatch[0][0];
             $offset = $badMatch[0][1];
             $excerpt = substr($apply, max(0, $offset - 20), 40);
