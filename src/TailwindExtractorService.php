@@ -342,7 +342,9 @@ class TailwindExtractorService
      */
     protected function assertValidApplyContent(string $apply, string $name, string $file, string $originalContent = ''): void
     {
-        if (preg_match('/[^a-zA-Z0-9\-\/:\_\.\[\]!\(\)\s]/', $apply, $badMatch, PREG_OFFSET_CAPTURE)) {
+        // Allow: letters, digits, - / : _ . [ ] ! ( ) # , % and whitespace
+        // These are all valid in Tailwind arbitrary values
+        if (preg_match('/[^a-zA-Z0-9\-\/:\_\.\[\]!\(\)\#\,\%\s]/', $apply, $badMatch, PREG_OFFSET_CAPTURE)) {
             $badChar = $badMatch[0][0];
             $offset = $badMatch[0][1];
             $excerpt = substr($apply, max(0, $offset - 20), 40);
@@ -364,7 +366,7 @@ class TailwindExtractorService
                 "   Full apply : $apply\n" .
                 "   File       : $file$lineInfo\n\n" .
                 "   Only Tailwind-valid characters are allowed between __ markers:\n" .
-                '   letters, digits, - / : _ . [ ] !'
+                '   letters, digits, - / : _ . [ ] ! ( ) # , %'
             );
         }
     }

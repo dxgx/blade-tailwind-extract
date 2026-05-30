@@ -2,6 +2,17 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.1.1 - 2026-05-30
+
+### Fixed
+- Enhanced validation to support Tailwind arbitrary values with CSS variables, hex colors, RGB/HSL colors, and complex functions
+- Now properly extracts classes like `hover:bg-[var(--secondary-color)]`, `bg-[#1da1f2]`, `text-[rgb(255,0,0)]`, etc.
+- Added characters `#`, `,`, and `%` to allowed validation regex for arbitrary value support
+
+### Added
+- Comprehensive test suite for arbitrary value extraction (10 new tests)
+- Tests cover CSS variables, hex colors, RGB/HSL colors, calc expressions, modifiers, and complex gradients
+
 ## 2.1.0 - 2026-05-30
 
 ### Added

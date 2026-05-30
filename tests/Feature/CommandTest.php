@@ -11,6 +11,9 @@ beforeEach(function () {
     
     File::ensureDirectoryExists(dirname($this->testViewPath));
     File::ensureDirectoryExists(dirname($this->testCssPath));
+    
+    // Override ignored_directories to allow test files (Orchestra Testbench paths contain /vendor/)
+    config(['dg-blade-tailwind-extract.ignored_directories' => []]);
 });
 
 afterEach(function () {
