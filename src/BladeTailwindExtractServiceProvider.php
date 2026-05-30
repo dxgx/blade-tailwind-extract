@@ -4,6 +4,7 @@ namespace Dxgx\BladeTailwindExtract;
 
 use Dxgx\BladeTailwindExtract\Commands\BladeTailwindExtractCommand;
 use Dxgx\BladeTailwindExtract\Commands\BladeTailwindRestoreCommand;
+use Dxgx\BladeTailwindExtract\Commands\BladeTailwindWrapCommand;
 use Illuminate\Support\ServiceProvider;
 
 class BladeTailwindExtractServiceProvider extends ServiceProvider
@@ -34,6 +35,7 @@ class BladeTailwindExtractServiceProvider extends ServiceProvider
             ], 'dg-blade-tailwind-extract-config');
 
             $this->commands([
+                BladeTailwindWrapCommand::class,
                 BladeTailwindExtractCommand::class,
                 BladeTailwindRestoreCommand::class,
             ]);

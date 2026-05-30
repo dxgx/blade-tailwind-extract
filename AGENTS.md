@@ -6,6 +6,9 @@ A Laravel package (command) that extracts Tailwind CSS classes from Blade templa
 
 ### Command Usage
 ```bash
+# Wrap (automated marker insertion)
+php artisan dg:blade-tailwind:wrap {view} [--min=3] [--skip-prefix=TW] [--dry-run]
+
 # Extract (inline → compact)
 php artisan dg:blade-tailwind:extract {target}
 
@@ -13,7 +16,13 @@ php artisan dg:blade-tailwind:extract {target}
 php artisan dg:blade-tailwind:restore {target}
 ```
 
-**Target formats:**
+**Wrap command:**
+- View: Dot notation (e.g., `components.card`) or path (e.g., `livewire/item`)
+- `--min=3`: Minimum classes to trigger wrapping (default: 3)
+- `--skip-prefix=TW`: Skip class lists with this prefix
+- `--dry-run`: Preview without modifying files
+
+**Extract/Restore target formats:**
 - No target: Processes all files in `search_path` (with double confirmation prompts)
 - Directory: `./resources/views` (recursive)
 - File: `resources/views/components/card.blade.php`
@@ -24,9 +33,10 @@ php artisan dg:blade-tailwind:restore {target}
 
 ```
 src/
-├── BladeTailwindExtractServiceProvider.php  # Laravel integration (registers both commands)
+├── BladeTailwindExtractServiceProvider.php  # Laravel integration (registers all commands)
 ├── TailwindExtractorService.php             # Core extraction/injection logic
 └── Commands/
+    ├── BladeTailwindWrapCommand.php         # Wrap command (automated marker insertion)
     ├── BladeTailwindExtractCommand.php      # Extract command (inline → compact)
     ├── BladeTailwindRestoreCommand.php      # Restore command (compact → inline)
     └── Concerns/
@@ -35,7 +45,17 @@ src/
 
 ### Core Flow
 
-1. **Extract Command** (`dg:blade-tailwind:extract`):
+1. **Wrap Command** (`dg:blade-tailwind:wrap`) - Optional Preparation:
+   - Takes view file path in dot notation or file path format
+   - Scans for class lists with minimum number of classes (default: 3)
+   - Automatically deduplicates: identical class lists get same wrapper name
+   - Generates semantic wrapper names: `__adjective-noun-number__` (e.g., `__happy-cat-1__`)
+   - Marks class lists: `__name__ classes __`
+   - Skips protected patterns: `__`, `material-symbols-outlined`, `TW-`
+   - Shows summary with wrapper names and occurrence counts
+   - Supports `class=""`, `@class([...])`, and wire/x-bind variants
+
+2. **Extract Command** (`dg:blade-tailwind:extract`):
    - Runs PHP syntax check (`php -l`) on all files before processing
    - Finds `__name__ tailwind classes __` patterns in Blade files
    - When no target specified, filters file list to show only files with extractable patterns
@@ -43,7 +63,7 @@ src/
    - Writes `@apply` rules to CSS file
    - Replaces inline classes with generated name
 
-2. **Restore Command** (`dg:blade-tailwind:restore`):
+3. **Restore Command** (`dg:blade-tailwind:restore`):
    - Reads `@apply` rules from CSS file
    - Finds generated class names in Blade files
    - Restores original Tailwind class strings
@@ -57,6 +77,9 @@ src/
 
 ### Key Design Decisions
 
+- **Wrap command deduplication**: Uses normalized whitespace comparison to match identical class lists, ensuring same wrapper names for duplicates
+- **Semantic wrapper names**: Format `adjective-noun-counter` (e.g., `happy-cat-1`) for human-readable markers
+- **Protected patterns in wrap**: Never wraps class lists containing `__`, `material-symbols-outlined`, or `TW-` prefix
 - **File-based hashing**: Each Blade file gets a unique 4-char hash (configurable) derived from file path to prevent class name collisions
 - **Reserved classes**: `group` and `peer` cannot be extracted (breaks parent-child selectors) and trigger warnings
 - **Pattern support**: Supports `class=""`, `->class([...])`, and `@class([...])`
@@ -81,6 +104,19 @@ src/
 - Protected by `$maxIterations` config to prevent infinite loops
 
 ### When Modifying Command Logic
+- Main methods in `BladeTailwindWrapCommand`:
+  - `handle()` - main command execution
+  - `resolveViewPath()` - converts dot notation to file path
+  - `processClassAttributes()` - finds and processes class attributes
+  - `wrapIfNeeded()` - determines if class list should be wrapped
+  - `generateWrapperName()` - creates semantic wrapper names
+  - `showChangeSummary()` - displays grouped results
+  - Properties:
+    - `$adjectives` and `$nouns` - pools for semantic name generation
+    - `$classListMap` - tracks class lists to wrapper names (for deduplication)
+    - `$changeLog` - records all changes for summary
+    - `$neverWrapPatterns` - patterns to never wrap (`__`, `material-symbols-outlined`, `TW-`)
+  
 - Main methods in `BladeTailwindExtractCommand`:
   - `handleExtract()` - processes extraction logic
   - `lintPhpFiles()` - runs `php -l` on files to check syntax (from trait)

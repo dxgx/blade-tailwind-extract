@@ -48,8 +48,10 @@ The `a40f` hash is derived from the file path, ensuring no conflicts between fil
 ## Features
 
 - ✅ **Reduces Livewire wire payload** - Short class names instead of verbose Tailwind strings
+- ✅ **Automated class identification** - Wrap command finds and marks repeated class lists
+- ✅ **Intelligent deduplication** - Identical class lists share the same wrapper name
 - ✅ **Works with `class=""`, `->class([...])`, and `@class([...])`** - Full Blade/Livewire support
-- ✅ **Bidirectional** - Extract for production, inject for development
+- ✅ **Bidirectional** - Extract for production, restore for development
 - ✅ **Safe** - Reserved classes like `group` and `peer` are automatically skipped
 - ✅ **Collision-free** - File-based hashing prevents class name conflicts
 - ✅ **Pattern matching** - Process specific files or entire directories
@@ -70,6 +72,54 @@ php artisan vendor:publish --tag=blade-tailwind-extract-config
 ```
 
 ## Usage
+
+### Quick Start: 3-Step Workflow
+
+1. **Wrap** - Automatically identify and mark class lists with semantic names
+2. **Extract** - Convert marked classes into compact CSS
+3. **Restore** - Bring back inline classes for editing
+
+### Wrap Classes (Preparation Step)
+
+Before extraction, use the wrap command to automatically identify and mark repeated Tailwind class lists with semantic wrapper names. This helps you see which classes will be extracted and ensures consistent naming for identical class lists.
+
+```bash
+# Wrap classes in a specific view
+php artisan dg:blade-tailwind:wrap components.card
+php artisan dg:blade-tailwind:wrap livewire.garage.list.item
+
+# Preview changes without modifying files
+php artisan dg:blade-tailwind:wrap components.card --dry-run
+
+# Customize minimum class count (default: 3)
+php artisan dg:blade-tailwind:wrap components.card --min=4
+
+# Skip class lists containing specific prefix (default: TW)
+php artisan dg:blade-tailwind:wrap components.card --skip-prefix=CUSTOM
+```
+
+**What it does:**
+- Scans for class lists with 3+ classes (configurable via `--min`)
+- Automatically deduplicates: identical class lists get the same wrapper name
+- Generates semantic names: `__adjective-noun-number__` (e.g., `__happy-cat-1__`)
+- Skips patterns that should never be extracted: `__`, `material-symbols-outlined`, `TW-`
+- Shows summary of changes with occurrence counts
+
+**Before wrapping:**
+```blade
+<div class="flex items-center justify-between gap-4 p-4">Item 1</div>
+<div class="flex items-center justify-between gap-4 p-4">Item 2</div>
+<div class="bg-blue-500 text-white rounded p-2">Button</div>
+```
+
+**After wrapping:**
+```blade
+<div class="__happy-cat-1__ flex items-center justify-between gap-4 p-4 __">Item 1</div>
+<div class="__happy-cat-1__ flex items-center justify-between gap-4 p-4 __">Item 2</div>
+<div class="__quick-fox-2__ bg-blue-500 text-white rounded p-2 __">Button</div>
+```
+
+Notice how identical class lists share the same wrapper name (`happy-cat-1`), while different lists get unique names.
 
 ### Extract Classes (Development → Production)
 
@@ -135,17 +185,38 @@ php artisan dg:blade-tailwind:restore *card*,*list*
 
 ### Workflow
 
+**Option A: Automated (New Files)**
+1. **Wrap** your Blade file to identify and mark repeated class lists
+2. **Extract** marked classes to generate compact CSS
+3. **Commit** both Blade files and CSS file
+
+**Option B: Manual (Existing Workflow)**
+1. Manually add `__name__ classes __` markers around classes you want to extract
+2. **Extract** to generate compact CSS
+3. **Commit** both Blade files and CSS file
+
+**Option C: Editing Existing Extracted Files**
 1. **Restore** before editing (restore Tailwind classes to inline format)
 2. **Edit** your Blade files normally
 3. **Extract** after editing (compact back to short class names)
 4. **Commit** both Blade files and CSS file
 
-### Class Marker Syntax
+You can add markers manually or use the `wrap` command to add them automatically.
 
+**Manual approach:**
 Wrap classes you want to extract with double underscores:
 
 ```blade
 <div class="__card-wrapper__ flex flex-col gap-2 p-4 __">
+    <!-- Content -->
+</div>
+```
+
+**Automated approach:**
+Use the wrap command to automatically identify and mark class lists:
+
+```bash
+php artisan dg:blade-tailwind:wrap your.view.namelass="__card-wrapper__ flex flex-col gap-2 p-4 __">
     <!-- Content -->
 </div>
 ```
@@ -224,18 +295,26 @@ The tool works seamlessly with Livewire's `->class([...])` method and Blade's `@
     'bg-green-50' => $selected,
 ])>
 ```
+Wrap Mode (Optional Preparation):**
+   - Scans for class lists with minimum number of classes (default: 3)
+   - Automatically deduplicates identical class lists
+   - Generates semantic wrapper names: `__adjective-noun-number__`
+   - Marks class lists: `__name__ classes __`
+   - Skips protected patterns (material-symbols-outlined, TW-, etc.)
+   - Shows summary with occurrence counts
 
-### Handling Renamed/Moved Files
+2. **Extract Mode:**
+   - Scans for `__name__ tailwind classes __` patterns
+   - Generates short class names: `{PREFIX}-{HASH}-{NAME}`
+   - Writes `@apply` rules to the CSS file
+   - Replaces inline classes with short names
 
-The hash is based on the file path. If you rename or move a Blade file:
+3. **Restore Mode:**
+   - Reads existing `@apply` rules from CSS file
+   - Finds short class names in Blade files
+   - Restores original Tailwind class strings
 
-1. Restore the file first (restore classes)
-2. Move/rename the file
-3. Extract again (generates new hash)
-
-## How It Works
-
-1. **Extract Mode:**
+4. **Extract Mode:**
    - Scans for `__name__ tailwind classes __` patterns
    - Generates short class names: `{PREFIX}-{HASH}-{NAME}`
    - Writes `@apply` rules to the CSS file

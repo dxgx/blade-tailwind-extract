@@ -2,6 +2,26 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.1.0 - 2026-05-30
+
+### Added
+- New `dg:blade-tailwind:wrap` command for automated class list identification and marking
+- Intelligent deduplication: identical class lists automatically receive the same wrapper name
+- Semantic wrapper name generation: `__adjective-noun-number__` format (e.g., `__happy-cat-1__`)
+- Protected pattern detection: automatically skips `__`, `material-symbols-outlined`, and `TW-` prefixes
+- Comprehensive test coverage for wrap command functionality
+- Options for wrap command:
+  - `--min`: Configurable minimum class count (default: 3)
+  - `--skip-prefix`: Skip class lists with specified prefix (default: TW)
+  - `--dry-run`: Preview changes without modifying files
+- Change summary display showing grouped wrappers with occurrence counts
+- Support for `class=""`, `@class([...])`, and wire/x-bind class attributes
+
+### Changed
+- Documentation updated with wrap command examples and workflows
+- Added "Quick Start: 3-Step Workflow" section to README
+- Updated AGENTS.md with comprehensive wrap command architecture details
+
 ## 2.0.0 - 2026-05-21
 
 ### BREAKING CHANGES
