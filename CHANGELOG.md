@@ -2,7 +2,7 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
-## [Unreleased]
+## 2.2.1 - 2026-05-31
 
 ### Added
 - Automatic CSS cleanup: `dg:blade-tailwind:restore` now removes restored CSS rules from the output file
@@ -13,6 +13,12 @@ All notable changes to `blade-tailwind-extract` will be documented in this file.
 ### Changed
 - Restore command now automatically cleans up CSS file after restoring classes to Blade files
 - Updated documentation to reflect automatic CSS cleanup feature
+
+## 2.2.0 - 2026-05-30
+
+### Added
+- Flexible pattern matching support in wrap command
+- Support for comma-separated multiple targets in all commands
 
 ## 2.1.1 - 2026-05-30
 
