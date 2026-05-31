@@ -356,9 +356,15 @@ class TailwindExtractorService
                 return true;
             }
             
-            // Also check for class with slash (e.g., "group/")
+            // Check for named group variants with slash (e.g., "group/sidebar")
             if (preg_match('/(?:^|\s)' . preg_quote($reservedClass, '/') . '\//', $content)) {
                 $reason = "contains reserved class variant '$reservedClass/'";
+                return true;
+            }
+            
+            // Check for dash-colon variants (e.g., "group-hover:", "peer-focus:")
+            if (preg_match('/(?:^|\s)' . preg_quote($reservedClass, '/') . '-\w+:/', $content)) {
+                $reason = "contains reserved class variant '$reservedClass-*:'";
                 return true;
             }
         }

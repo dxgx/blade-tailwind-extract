@@ -2,6 +2,15 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.2.3 - 2026-05-31
+
+### Fixed
+- Enhanced reserved class detection to catch `group-hover:`, `peer-focus:`, `group-active:`, `peer-checked:`, and all other dash-colon variants (e.g., `group-*:`, `peer-*:`) that break parent-child/sibling relationships when extracted
+
+### Added
+- 5 new comprehensive tests for reserved class dash-colon variant detection
+- Detection pattern now covers all Tailwind pseudo-class modifiers for `group` and `peer` classes
+
 ## 2.2.2 - 2026-05-31
 
 ### Added
