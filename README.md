@@ -199,6 +199,8 @@ php artisan dg:blade-tailwind:restore components/card.blade.php
 php artisan dg:blade-tailwind:restore *card*,*list*
 ```
 
+**Automatic CSS Cleanup:** When you restore classes, the command automatically removes the restored CSS rules from the output file, keeping your CSS clean and preventing stale rules from accumulating.
+
 ### Workflow
 
 **Option A: Automated (New Files)**

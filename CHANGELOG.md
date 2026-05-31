@@ -2,6 +2,18 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Automatic CSS cleanup: `dg:blade-tailwind:restore` now removes restored CSS rules from the output file
+- New `removeRestoredClassesFromCss()` method in `TailwindExtractorService` for cleaning up CSS rules
+- `inject()` method now returns `restored_classes` array with list of all restored class names
+- Test coverage for CSS cleanup functionality
+
+### Changed
+- Restore command now automatically cleans up CSS file after restoring classes to Blade files
+- Updated documentation to reflect automatic CSS cleanup feature
+
 ## 2.1.1 - 2026-05-30
 
 ### Fixed

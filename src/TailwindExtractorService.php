@@ -113,16 +113,17 @@ class TailwindExtractorService
         $files = $this->getBladeFiles($target);
 
         if (empty($files)) {
-            return ['processed' => 0, 'injected' => 0];
+            return ['processed' => 0, 'injected' => 0, 'restored_classes' => []];
         }
 
         $rules = $this->readExistingCssRules($cssFile);
 
         if (empty($rules)) {
-            return ['processed' => 0, 'injected' => 0];
+            return ['processed' => 0, 'injected' => 0, 'restored_classes' => []];
         }
 
         $totalInjected = 0;
+        $allRestoredClasses = [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
@@ -138,11 +139,15 @@ class TailwindExtractorService
             $content = $this->injectIntoAtClassDirective($content, $rules, $totalInjected, $injectedClasses);
 
             file_put_contents($file, $content);
+            
+            // Track all restored classes
+            $allRestoredClasses = array_merge($allRestoredClasses, $injectedClasses);
         }
 
         return [
             'processed' => count($files),
             'injected' => $totalInjected,
+            'restored_classes' => array_unique($allRestoredClasses),
         ];
     }
 
@@ -697,5 +702,36 @@ class TailwindExtractorService
         }
 
         file_put_contents($cssFile, $newCss);
+    }
+
+    /**
+     * Remove restored classes from CSS file
+     */
+    public function removeRestoredClassesFromCss(string $cssFile, array $restoredClasses): void
+    {
+        if (empty($restoredClasses) || !file_exists($cssFile)) {
+            return;
+        }
+
+        $css = file_get_contents($cssFile);
+        $originalCss = $css;
+
+        foreach ($restoredClasses as $className) {
+            // Remove the CSS rule for this class
+            // Pattern matches: .classname { @apply ...; }
+            $pattern = '/\.\s*' . preg_quote($className, '/') . '\s*\{\s*@apply\s+[^;]+;?\s*\}\n?/i';
+            $css = preg_replace($pattern, '', $css);
+        }
+
+        // Clean up empty file comments (comments with no rules following them)
+        $css = preg_replace('/\/\*[^*]*\*\/\s*(?=\/\*|$)/s', '', $css);
+
+        // Clean up multiple blank lines
+        $css = preg_replace('/\n{3,}/', "\n\n", $css);
+
+        // Only write if content changed
+        if ($css !== $originalCss) {
+            file_put_contents($cssFile, trim($css) . "\n");
+        }
     }
 }

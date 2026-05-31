@@ -77,6 +77,9 @@ src/
    - Reads `@apply` rules from CSS file
    - Finds generated class names in Blade files
    - Restores original Tailwind class strings
+   - **Automatic CSS Cleanup**: Removes restored CSS rules from the output file
+   - Tracks all restored class names during injection
+   - Cleans up empty file comments and excessive whitespace
 
 ### Validation & Safety Features
 
@@ -111,6 +114,8 @@ src/
   - `extractFromAtClassDirective()` - handles `@class([])`
   - `hasExtractablePatterns()` - checks if file contains patterns to extract
   - `getBladeFiles()` - public method to retrieve files for a target
+  - `inject()` - restores classes from CSS back to Blade files, returns restored class names
+  - `removeRestoredClassesFromCss()` - removes restored CSS rules from output file
 - All use regex to find `__name__ classes __` pattern
 - Protected by `$maxIterations` config to prevent infinite loops
 
@@ -137,8 +142,9 @@ src/
   - `confirmBulkOperation()` - handles file filtering and double confirmation (from trait)
   
 - Main methods in `BladeTailwindRestoreCommand`:
-  - `handleRestore()` - processes restoration logic
+  - `handleRestore()` - processes restoration logic and automatically removes restored CSS rules
   - Uses same trait methods for bulk operations
+  - Calls `removeRestoredClassesFromCss()` after successful restoration
   
 - **Shared trait** (`HandlesBulkOperations`):
   - `findAllBladeFiles()` - recursively finds .blade.php files

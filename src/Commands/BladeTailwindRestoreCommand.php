@@ -94,6 +94,12 @@ class BladeTailwindRestoreCommand extends Command
 
         if ($result['injected'] > 0) {
             $this->info("🔄 Restored {$result['injected']} class(es) back into templates");
+            
+            // Remove restored classes from CSS file
+            if (!empty($result['restored_classes'])) {
+                $this->extractor->removeRestoredClassesFromCss($cssFile, $result['restored_classes']);
+                $this->info("🧹 Removed {$result['injected']} restored class(es) from CSS file");
+            }
         } else {
             $this->comment('   No classes to restore (files already in development mode)');
         }
