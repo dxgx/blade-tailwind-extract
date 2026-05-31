@@ -7,7 +7,7 @@ A Laravel package (command) that extracts Tailwind CSS classes from Blade templa
 ### Command Usage
 ```bash
 # Wrap (automated marker insertion)
-php artisan dg:blade-tailwind:wrap {view} [--min=3] [--skip-prefix=TW] [--dry-run]
+php artisan dg:blade-tailwind:wrap {target} [--min=3] [--skip-prefix=TW] [--dry-run] [--yy]
 
 # Extract (inline → compact)
 php artisan dg:blade-tailwind:extract {target}
@@ -16,11 +16,18 @@ php artisan dg:blade-tailwind:extract {target}
 php artisan dg:blade-tailwind:restore {target}
 ```
 
-**Wrap command:**
-- View: Dot notation (e.g., `components.card`) or path (e.g., `livewire/item`)
+**All commands share the same target format:**
+- No target: Processes all files in `search_path` (with double confirmation prompts)
+- Directory: `./resources/views` (recursive)
+- File: `resources/views/components/card.blade.php`
+- Pattern: `*preview*`, `*card*.blade.php`
+- Multiple: `card.blade.php,list.blade.php` or `*preview*,*card*`
+
+**Wrap command options:**
 - `--min=3`: Minimum classes to trigger wrapping (default: 3)
 - `--skip-prefix=TW`: Skip class lists with this prefix
 - `--dry-run`: Preview without modifying files
+- `--yy`: Skip all confirmations
 
 **Extract/Restore target formats:**
 - No target: Processes all files in `search_path` (with double confirmation prompts)
@@ -46,7 +53,10 @@ src/
 ### Core Flow
 
 1. **Wrap Command** (`dg:blade-tailwind:wrap`) - Optional Preparation:
-   - Takes view file path in dot notation or file path format
+   - Accepts same target formats as extract/restore: file, directory, pattern, multiple, or all files
+   - Supports `--yy` flag to skip all confirmations for bulk operations
+   - When no target specified, processes all files in `search_path` with double confirmation
+   - Uses `TailwindExtractorService::getBladeFiles()` for pattern matching
    - Scans for class lists with minimum number of classes (default: 3)
    - Automatically deduplicates: identical class lists get same wrapper name
    - Generates semantic wrapper names: `__adjective-noun-number__` (e.g., `__happy-cat-1__`)
@@ -72,8 +82,9 @@ src/
 
 - **PHP Lint Check**: Before extraction, all PHP files are validated using `php -l` to catch syntax errors
 - **Smart File Filtering**: When extracting without target, only files with `__name__ classes __` patterns are shown in the confirmation list
-- **Double Confirmation**: When processing all files (no target), prompts twice for safety
+- **Double Confirmation**: When processing all files (no target) in any command (wrap, extract, restore), prompts twice for safety
 - **Skip Flag**: `--yy` flag bypasses all confirmations for automated workflows
+- **Dry Run**: Wrap command supports `--dry-run` to preview changes before applying
 
 ### Key Design Decisions
 
@@ -105,12 +116,15 @@ src/
 
 ### When Modifying Command Logic
 - Main methods in `BladeTailwindWrapCommand`:
-  - `handle()` - main command execution
-  - `resolveViewPath()` - converts dot notation to file path
+  - `handle()` - main command execution with bulk operation support
+  - `processFile()` - processes a single Blade file
   - `processClassAttributes()` - finds and processes class attributes
   - `wrapIfNeeded()` - determines if class list should be wrapped
   - `generateWrapperName()` - creates semantic wrapper names
   - `showChangeSummary()` - displays grouped results
+  - `resolveViewPath()` - (deprecated) kept for backward compatibility
+  - Uses `HandlesBulkOperations` trait for file discovery and confirmations
+  - Uses `TailwindExtractorService::getBladeFiles()` for pattern matching
   - Properties:
     - `$adjectives` and `$nouns` - pools for semantic name generation
     - `$classListMap` - tracks class lists to wrapper names (for deduplication)

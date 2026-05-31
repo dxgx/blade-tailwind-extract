@@ -84,18 +84,34 @@ php artisan vendor:publish --tag=blade-tailwind-extract-config
 Before extraction, use the wrap command to automatically identify and mark repeated Tailwind class lists with semantic wrapper names. This helps you see which classes will be extracted and ensures consistent naming for identical class lists.
 
 ```bash
-# Wrap classes in a specific view
-php artisan dg:blade-tailwind:wrap components.card
-php artisan dg:blade-tailwind:wrap livewire.garage.list.item
+# Wrap classes in a specific file
+php artisan dg:blade-tailwind:wrap resources/views/components/card.blade.php
+
+# Wrap classes in an entire directory (recursive)
+php artisan dg:blade-tailwind:wrap ./resources/views/livewire
+
+# Wrap classes using a pattern
+php artisan dg:blade-tailwind:wrap "*preview*"
+php artisan dg:blade-tailwind:wrap "*card*.blade.php"
+
+# Wrap multiple files or patterns (comma-separated)
+php artisan dg:blade-tailwind:wrap "card.blade.php,list.blade.php"
+php artisan dg:blade-tailwind:wrap "*preview*,*card*"
+
+# Wrap all files in search_path (with confirmation prompts)
+php artisan dg:blade-tailwind:wrap
+
+# Skip confirmations for automated workflows
+php artisan dg:blade-tailwind:wrap --yy
 
 # Preview changes without modifying files
-php artisan dg:blade-tailwind:wrap components.card --dry-run
+php artisan dg:blade-tailwind:wrap "*preview*" --dry-run
 
 # Customize minimum class count (default: 3)
-php artisan dg:blade-tailwind:wrap components.card --min=4
+php artisan dg:blade-tailwind:wrap components/card.blade.php --min=4
 
 # Skip class lists containing specific prefix (default: TW)
-php artisan dg:blade-tailwind:wrap components.card --skip-prefix=CUSTOM
+php artisan dg:blade-tailwind:wrap components/card.blade.php --skip-prefix=CUSTOM
 ```
 
 **What it does:**

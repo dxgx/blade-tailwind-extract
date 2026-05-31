@@ -2,18 +2,25 @@
 
 namespace Dxgx\BladeTailwindExtract\Commands;
 
+use Dxgx\BladeTailwindExtract\Commands\Concerns\HandlesBulkOperations;
+use Dxgx\BladeTailwindExtract\TailwindExtractorService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 class BladeTailwindWrapCommand extends Command
 {
+    use HandlesBulkOperations;
+
     protected $signature = 'dg:blade-tailwind:wrap
-                            {view : The view file path (relative to resources/views)}
+                            {target? : Target to process (optional). Accepts: (1) File path: resources/views/components/card.blade.php, (2) Directory: ./resources/views (recursive), (3) Pattern: *preview* or *card*.blade.php, (4) Multiple: card.blade.php,list.blade.php. If omitted, processes all files in search_path}
                             {--min=3 : Minimum number of classes to trigger wrapping}
                             {--skip-prefix=TW : Skip class lists containing classes with this prefix}
-                            {--dry-run : Preview changes without modifying the file}';
+                            {--dry-run : Preview changes without modifying the file}
+                            {--yy : Skip all confirmations when processing all files (no target)}';
 
     protected $description = 'Wrap Tailwind class lists in Blade templates with generated identifiers';
+
+    protected TailwindExtractorService $extractor;
 
     private array $adjectives = [
         'happy', 'sunny', 'quick', 'lazy', 'brave', 'calm', 'eager', 'gentle',
@@ -45,9 +52,18 @@ class BladeTailwindWrapCommand extends Command
         'TW-',
     ];
 
+    /**
+     * Create a new command instance.
+     */
+    public function __construct(TailwindExtractorService $extractor)
+    {
+        parent::__construct();
+        $this->extractor = $extractor;
+    }
+
     public function handle(): int
     {
-        $viewPath = $this->argument('view');
+        $target = $this->argument('target');
         $minClasses = (int) $this->option('min');
         $skipPrefix = $this->option('skip-prefix');
         $dryRun = $this->option('dry-run');
@@ -57,13 +73,76 @@ class BladeTailwindWrapCommand extends Command
         $this->counter = 1;
         $this->changeLog = [];
 
-        // Resolve view path
-        $fullPath = $this->resolveViewPath($viewPath);
+        // If no target provided, process all files with confirmation
+        if ($target === null) {
+            $searchPath = config('dg-blade-tailwind-extract.search_path');
+            $files = $this->findAllBladeFiles($searchPath);
+            
+            if (empty($files)) {
+                $this->warn("⚠️  No .blade.php files found in: $searchPath");
+                return self::SUCCESS;
+            }
+            
+            // Show confirmation and file list (skip if --yy flag is provided)
+            $skipConfirmations = $this->option('yy');
+            if (!$this->confirmBulkOperation('wrap', $files, $searchPath, $skipConfirmations)) {
+                $this->comment('Operation cancelled.');
+                return self::SUCCESS;
+            }
+            
+            // Use search_path as the target
+            $target = $searchPath;
+        }
 
-        if (! File::exists($fullPath)) {
-            $this->error("View file not found: {$fullPath}");
+        try {
+            // Get files using the extractor service's pattern matching
+            $files = $this->extractor->getBladeFiles($target);
+            
+            if (empty($files)) {
+                $this->warn('⚠️  No files found matching the target.');
+                return self::SUCCESS;
+            }
 
+            $this->info("🔍 Wrapping Tailwind classes in " . count($files) . " file(s)...");
+            $this->newLine();
+
+            $filesProcessed = 0;
+            $filesModified = 0;
+
+            foreach ($files as $filePath) {
+                $result = $this->processFile($filePath, $minClasses, $skipPrefix, $dryRun);
+                $filesProcessed++;
+                
+                if ($result) {
+                    $filesModified++;
+                }
+            }
+
+            $this->newLine();
+            $this->info("✅ Processed {$filesProcessed} file(s), modified {$filesModified}");
+            
+            if ($filesModified > 0) {
+                $this->newLine();
+                $this->showChangeSummary();
+            }
+
+            return self::SUCCESS;
+        } catch (\Exception $e) {
+            $this->error($e->getMessage());
             return self::FAILURE;
+        }
+    }
+
+    /**
+     * Process a single file
+     * 
+     * @return bool True if file was modified, false otherwise
+     */
+    private function processFile(string $fullPath, int $minClasses, string $skipPrefix, bool $dryRun): bool
+    {
+        if (!File::exists($fullPath)) {
+            $this->error("View file not found: {$fullPath}");
+            return false;
         }
 
         $content = File::get($fullPath);
@@ -73,24 +152,23 @@ class BladeTailwindWrapCommand extends Command
         $content = $this->processClassAttributes($content, $minClasses, $skipPrefix);
 
         if ($content === $originalContent) {
-            $this->info('No changes needed - no matching class lists found.');
-
-            return self::SUCCESS;
+            return false;
         }
 
         if ($dryRun) {
-            $this->warn('DRY RUN - Changes not applied');
-            $this->line('');
-            $this->showChangeSummary();
+            $this->warn("[DRY RUN] Would modify: {$fullPath}");
         } else {
             File::put($fullPath, $content);
-            $this->info("✓ File modified: {$fullPath}");
-            $this->showChangeSummary();
+            $this->info("✓ Modified: {$fullPath}");
         }
 
-        return self::SUCCESS;
+        return true;
     }
 
+    /**
+     * Resolve view path (for backward compatibility with dot notation)
+     * @deprecated This method is kept for backward compatibility but no longer used in handle()
+     */
     private function resolveViewPath(string $viewPath): string
     {
         // Remove .blade.php extension if provided (must do before replacing dots)

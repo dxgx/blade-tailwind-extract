@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
+    // Override ignored_directories to allow test files (Orchestra Testbench paths contain /vendor/)
+    config(['dg-blade-tailwind-extract.ignored_directories' => []]);
+    
     // Clean up any test files
     $testFiles = [
         resource_path('views/test-wrap-identical.blade.php'),
@@ -41,7 +44,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-identical.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-identical'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-identical.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-identical.blade.php'));
@@ -67,7 +70,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -98,7 +101,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -129,7 +132,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -151,7 +154,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-multiline.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-multiline'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-multiline.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-multiline.blade.php'));
@@ -176,7 +179,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -202,7 +205,7 @@ BLADE;
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
     $this->artisan('dg:blade-tailwind:wrap', [
-        'view' => 'test-wrap-mixed',
+        'target' => resource_path('views/test-wrap-mixed.blade.php'),
         '--skip-prefix' => 'CUSTOM-',
     ])->assertSuccessful();
 
@@ -224,7 +227,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -245,7 +248,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -262,7 +265,7 @@ it('resolves view path with blade.php extension', function () {
     File::put(resource_path('views/test-path-with-extension.blade.php'), $content);
 
     // Should work with .blade.php extension included
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-path-with-extension.blade.php'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-path-with-extension.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-path-with-extension.blade.php'));
@@ -282,8 +285,8 @@ it('resolves view path with dot notation', function () {
 
     File::put(resource_path('views/test-nested/subdir/file.blade.php'), $content);
 
-    // Should work with dot notation
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-nested.subdir.file'])
+    // Should work with pattern matching
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-nested/subdir/file.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-nested/subdir/file.blade.php'));
@@ -306,7 +309,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed'])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
@@ -334,7 +337,7 @@ BLADE;
 
     File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
 
-    $this->artisan('dg:blade-tailwind:wrap', ['view' => 'test-wrap-mixed', '--dry-run' => true])
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php'), '--dry-run' => true])
         ->assertSuccessful();
 
     $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));

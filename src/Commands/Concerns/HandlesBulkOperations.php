@@ -60,7 +60,13 @@ trait HandlesBulkOperations
         }
 
         $fileCount = count($files);
-        $operationName = $mode === 'extract' ? 'extract Tailwind classes from' : 'restore Tailwind classes into';
+        
+        $operationName = match($mode) {
+            'extract' => 'extract Tailwind classes from',
+            'restore' => 'restore Tailwind classes into',
+            'wrap' => 'wrap Tailwind classes in',
+            default => 'process',
+        };
 
         $this->newLine();
         $this->warn("⚠️  You are about to $operationName ALL files in: $searchPath");
