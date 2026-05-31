@@ -63,7 +63,14 @@ src/
    - Marks class lists: `__name__ classes __`
    - Skips protected patterns: `__`, `material-symbols-outlined`, `TW-`
    - Shows summary with wrapper names and occurrence counts
-   - Supports `class=""`, `@class([...])`, and wire/x-bind variants
+   - **Supported patterns**:
+     - Static `class=""` attributes
+     - Livewire `wire:class=""` attributes
+     - Alpine.js `:class=""` with static strings
+     - Alpine.js `:class=""` with ternary expressions (both branches wrapped independently)
+     - Alpine.js `x-bind:class=""` attributes
+     - Blade `@class([])` directive with simple arrays
+     - Blade `@class([])` directive with conditional arrays (all strings wrapped independently)
 
 2. **Extract Command** (`dg:blade-tailwind:extract`):
    - Runs PHP syntax check (`php -l`) on all files before processing
@@ -98,7 +105,10 @@ src/
 - **Protected patterns in wrap**: Never wraps class lists containing `__`, `material-symbols-outlined`, or `TW-` prefix
 - **File-based hashing**: Each Blade file gets a unique 4-char hash (configurable) derived from file path to prevent class name collisions
 - **Reserved classes**: `group`, `group/`, and `peer` cannot be extracted (breaks parent-child selectors) and trigger informative warnings
-- **Pattern support**: Supports `class=""`, `->class([...])`, and `@class([...])`
+- **Pattern support**: Comprehensive support for `class=""`, `wire:class=""`, `:class` (static & ternary), `x-bind:class`, `@class([])` (simple & conditional)
+- **Pattern processing order**: Complex patterns (`@class` conditionals, `:class` ternaries) processed before simple patterns to prevent interference
+- **Ternary branch wrapping**: Both branches of ternary expressions in `:class` are wrapped independently if they meet threshold
+- **Conditional array wrapping**: All strings in `@class([...])` conditional arrays are wrapped independently if they meet threshold
 - **Singleton service**: `TailwindExtractorService` registered as singleton in container
 - **Skipped pattern deduplication**: Multiple iterations of the same skipped pattern are deduplicated before reporting
 
@@ -129,13 +139,21 @@ src/
 - Main methods in `BladeTailwindWrapCommand`:
   - `handle()` - main command execution with bulk operation support
   - `processFile()` - processes a single Blade file
-  - `processClassAttributes()` - finds and processes class attributes
+  - `processClassAttributes()` - orchestrates pattern processing in optimal order
+  - `processAtClassConditionals()` - processes all strings within `@class([...])` arrays
+  - `processClassTernary()` - processes `:class` ternary expressions and simple bindings
+  - `processClassTernaryMatch()` - helper method to process a single `:class` attribute match
   - `wrapIfNeeded()` - determines if class list should be wrapped
   - `generateWrapperName()` - creates semantic wrapper names
   - `showChangeSummary()` - displays grouped results
   - `resolveViewPath()` - (deprecated) kept for backward compatibility
   - Uses `HandlesBulkOperations` trait for file discovery and confirmations
   - Uses `TailwindExtractorService::getBladeFiles()` for pattern matching
+  - **Processing order**:
+    1. Pattern 3: `@class([...])` conditionals (all strings in array)
+    2. Pattern 4: `:class` ternary expressions and simple bindings
+    3. Pattern 1: Static `class` and `wire:class` attributes
+    4. Pattern 2: Simple `@class([...])` arrays (backward compatibility)
   - Properties:
     - `$adjectives` and `$nouns` - pools for semantic name generation
     - `$classListMap` - tracks class lists to wrapper names (for deduplication)

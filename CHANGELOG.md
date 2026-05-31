@@ -2,6 +2,28 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.3.0 - 2026-05-31
+
+### Added
+- **Comprehensive Alpine.js `:class` ternary expression support**: Wrap command now processes both branches of ternary expressions independently (e.g., `:class="condition ? 'classes-a' : 'classes-b'"`)
+- **Full `@class` conditional array support**: All conditional strings in `@class([...])` arrays are now processed, not just the first one
+- **Simple `:class` static binding support**: Static class strings in `:class` attributes are now wrapped alongside ternary expressions
+- **`x-bind:class` support**: Explicit Alpine binding syntax now fully supported
+- **Smart already-wrapped detection**: All patterns now skip already-wrapped class lists to prevent double-wrapping
+- 6 new comprehensive tests for ternary expressions and conditional arrays
+- Detailed pattern behavior documentation in README with 8 example patterns
+
+### Changed
+- Pattern processing order optimized: `@class` conditionals and `:class` ternaries are processed before simple patterns
+- Static `class` and `wire:class` patterns now explicitly exclude dynamic `:class` patterns to prevent conflicts
+- Double-quoted and single-quoted `:class` attributes are now processed separately for proper nested quote handling
+
+### Technical Details
+- New `processAtClassConditionals()` method for handling all strings within `@class([...])` arrays
+- New `processClassTernary()` and `processClassTernaryMatch()` methods for ternary expression processing
+- Enhanced regex patterns to properly handle nested quotes in attribute values
+- Pattern matching now respects minimum class threshold for all conditional and ternary branches
+
 ## 2.2.3 - 2026-05-31
 
 ### Fixed

@@ -50,7 +50,7 @@ The `a40f` hash is derived from the file path, ensuring no conflicts between fil
 - ✅ **Reduces Livewire wire payload** - Short class names instead of verbose Tailwind strings
 - ✅ **Automated class identification** - Wrap command finds and marks repeated class lists
 - ✅ **Intelligent deduplication** - Identical class lists share the same wrapper name
-- ✅ **Works with `class=""`, `->class([...])`, and `@class([...])`** - Full Blade/Livewire support
+- ✅ **Comprehensive pattern support** - Works with `class=""`, `wire:class=""`, `:class` (static & ternary), `x-bind:class`, `@class([])` (simple & conditional)
 - ✅ **Bidirectional** - Extract for production, restore for development
 - ✅ **Safe** - Reserved classes like `group`, `group/`, and `peer` are automatically skipped with informative warnings
 - ✅ **Collision-free** - File-based hashing prevents class name conflicts
@@ -136,6 +136,125 @@ php artisan dg:blade-tailwind:wrap components/card.blade.php --skip-prefix=CUSTO
 ```
 
 Notice how identical class lists share the same wrapper name (`happy-cat-1`), while different lists get unique names.
+
+## Supported Class Attribute Patterns
+
+The wrap command supports all major Blade/Livewire/Alpine.js class attribute patterns:
+
+### 1. Static `class` Attribute
+Standard HTML class attribute:
+```blade
+<!-- Before -->
+<div class="flex items-center justify-between gap-4 p-4">Content</div>
+
+<!-- After wrapping -->
+<div class="__happy-cat-1__ flex items-center justify-between gap-4 p-4 __">Content</div>
+```
+
+### 2. Livewire `wire:class` Attribute
+Livewire's reactive class binding:
+```blade
+<!-- Before -->
+<div wire:class="flex items-center space-x-2 p-4">Content</div>
+
+<!-- After wrapping -->
+<div wire:class="__sunny-owl-2__ flex items-center space-x-2 p-4 __">Content</div>
+```
+
+### 3. Alpine.js `:class` with Static Classes
+Dynamic class binding with static string:
+```blade
+<!-- Before -->
+<button :class="flex items-center justify-center rounded-md p-2">Click</button>
+
+<!-- After wrapping -->
+<button :class="__quick-fox-3__ flex items-center justify-center rounded-md p-2 __">Click</button>
+```
+
+### 4. Alpine.js `:class` with Ternary Expression
+Conditional class switching with ternary operator:
+```blade
+<!-- Before -->
+<button :class="isActive 
+    ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-700' 
+    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'">
+    Toggle
+</button>
+
+<!-- After wrapping (both branches wrapped independently) -->
+<button :class="isActive 
+    ? '__brave-ant-4__ bg-blue-500 text-white border-blue-500 hover:bg-blue-700 __' 
+    : '__calm-bee-5__ bg-white text-gray-700 border-gray-300 hover:bg-gray-100 __'">
+    Toggle
+</button>
+```
+
+### 5. Alpine.js `x-bind:class` Attribute
+Explicit Alpine binding syntax:
+```blade
+<!-- Before -->
+<div x-bind:class="flex flex-col gap-4 p-6">Content</div>
+
+<!-- After wrapping -->
+<div x-bind:class="__lazy-ram-6__ flex flex-col gap-4 p-6 __">Content</div>
+```
+
+### 6. Blade `@class` Directive (Simple Array)
+Blade's class directive with simple string:
+```blade
+<!-- Before -->
+<div @class(['flex items-center justify-between p-4 border rounded'])>Item</div>
+
+<!-- After wrapping -->
+<div @class(['__eager-jay-7__ flex items-center justify-between p-4 border rounded __'])>Item</div>
+```
+
+### 7. Blade `@class` Directive (Conditional Array)
+Blade's class directive with conditional classes:
+```blade
+<!-- Before -->
+<button @class([
+    'flex items-center justify-center size-9',
+    'text-gray-200 cursor-not-allowed opacity-50' => !$isEnabled,
+    'text-blue-500 hover:text-blue-600 hover:bg-blue-50' => $isEnabled
+])>Action</button>
+
+<!-- After wrapping (all qualifying strings wrapped) -->
+<button @class([
+    '__gentle-fox-8__ flex items-center justify-center size-9 __',
+    '__jolly-cat-9__ text-gray-200 cursor-not-allowed opacity-50 __' => !$isEnabled,
+    '__kind-dog-10__ text-blue-500 hover:text-blue-600 hover:bg-blue-50 __' => $isEnabled
+])>Action</button>
+```
+
+### 8. Combined Static and Dynamic Classes
+Elements with both static `class` and dynamic `:class` attributes (wrapped independently):
+```blade
+<!-- Before -->
+<button 
+    :class="active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+    class="flex items-center justify-center rounded-md">
+    Toggle
+</button>
+
+<!-- After wrapping -->
+<button 
+    :class="active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+    class="__lively-hen-11__ flex items-center justify-center rounded-md __">
+    Toggle
+</button>
+```
+*Note: In this example, the ternary branches have only 2 classes each (below the default minimum of 3), so they aren't wrapped. The static `class` attribute with 4 classes is wrapped.*
+
+### Pattern Behavior Summary
+
+- **All patterns** respect the minimum class count (default: 3, configurable via `--min`)
+- **Identical class lists** across any pattern type share the same wrapper name
+- **Already wrapped** class lists are skipped (won't double-wrap)
+- **Protected patterns** (containing `__`, `material-symbols-outlined`, or starting with `TW-`) are never wrapped
+- **Ternary expressions** have both branches examined and wrapped independently if they meet the threshold
+- **Conditional arrays** in `@class` have all string values examined and wrapped independently
+- **Static and dynamic** attributes on the same element are processed independently
 
 ### Extract Classes (Development → Production)
 

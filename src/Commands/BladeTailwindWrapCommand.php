@@ -182,14 +182,23 @@ class BladeTailwindWrapCommand extends Command
 
     private function processClassAttributes(string $content, int $minClasses, string $skipPrefix): string
     {
-        // Pattern 1: class="..." (including wire:class, :class, x-bind:class)
+        // Pattern 3: @class conditional strings - Process ALL quoted strings in @class arrays
+        // Do this FIRST to handle complex @class arrays before simple pattern matches
+        $content = $this->processAtClassConditionals($content, $minClasses, $skipPrefix);
+
+        // Pattern 4: :class ternary expressions - Handle dynamic :class with ternary operator
+        // Do this BEFORE Pattern 1 so it doesn't consume :class attributes
+        $content = $this->processClassTernary($content, $minClasses, $skipPrefix);
+
+        // Pattern 1: Static class="..." and wire:class="..." (NOT :class or x-bind:class which are dynamic)
         $content = preg_replace_callback(
-            '/(\s(?:wire:)?(?:x-bind:)?:?class\s*=\s*["\'])([^"\']*)(["\'])/s',
+            '/(\s(?:wire:)?class\s*=\s*["\'])([^"\']*)(["\'])/s',
             fn ($matches) => $this->wrapIfNeeded($matches, $minClasses, $skipPrefix, 'simple'),
             $content
         );
 
-        // Pattern 2: @class([...])
+        // Pattern 2: @class([...]) - First string only (for backward compatibility with simple arrays)
+        // This only matches if Pattern 3 didn't already process it
         $content = preg_replace_callback(
             '/@class\(\[\s*(["\'])([^"\']*)(["\'])/s',
             fn ($matches) => $this->wrapIfNeeded($matches, $minClasses, $skipPrefix, 'directive'),
@@ -197,6 +206,200 @@ class BladeTailwindWrapCommand extends Command
         );
 
         return $content;
+    }
+
+    /**
+     * Process all conditional strings within @class([...]) arrays
+     * Example: @class(['base classes', 'conditional' => $condition])
+     */
+    private function processAtClassConditionals(string $content, int $minClasses, string $skipPrefix): string
+    {
+        return preg_replace_callback(
+            '/@class\(\[([^\]]+)\]\)/s',
+            function ($matches) use ($minClasses, $skipPrefix) {
+                $arrayContent = $matches[1];
+                $originalArrayContent = $arrayContent;
+                
+                // Find all quoted strings (both simple and conditional keys)
+                // Match: 'string' or "string", optionally followed by => condition
+                // We need to be careful to match the full conditional part
+                $processed = preg_replace_callback(
+                    '/(["\'])([^"\']*)\1(\s*=>\s*[^,]+)?/s',
+                    function ($stringMatches) use ($minClasses, $skipPrefix) {
+                        $quote = $stringMatches[1];
+                        $classList = $stringMatches[2];
+                        $conditionalPart = $stringMatches[3] ?? '';
+                        
+                        // Skip if already wrapped
+                        if (preg_match('/__[a-z]+-[a-z]+-\d+__/', $classList)) {
+                            return $stringMatches[0];
+                        }
+                        
+                        // Check for never-wrap patterns
+                        foreach ($this->neverWrapPatterns as $pattern) {
+                            if (str_contains($classList, $pattern)) {
+                                return $stringMatches[0];
+                            }
+                        }
+                        
+                        // Parse and count classes
+                        $classes = $this->parseClasses($classList);
+                        if (count($classes) < $minClasses) {
+                            return $stringMatches[0];
+                        }
+                        
+                        // Check for skip prefix
+                        if (! empty($skipPrefix)) {
+                            foreach ($classes as $class) {
+                                if (str_starts_with($class, $skipPrefix)) {
+                                    return $stringMatches[0];
+                                }
+                            }
+                        }
+                        
+                        // Generate or reuse wrapper name
+                        $normalizedClassList = $this->normalizeWhitespace($classList);
+                        if (! isset($this->classListMap[$normalizedClassList])) {
+                            $this->classListMap[$normalizedClassList] = $this->generateWrapperName();
+                        }
+                        $wrapperName = $this->classListMap[$normalizedClassList];
+                        
+                        // Wrap the class list
+                        $wrappedClassList = "__{$wrapperName}__ {$classList} __";
+                        
+                        // Log the change
+                        $this->changeLog[] = [
+                            'original' => $classList,
+                            'wrapped' => $wrappedClassList,
+                            'wrapper' => $wrapperName,
+                        ];
+                        
+                        return $quote . $wrappedClassList . $quote . $conditionalPart;
+                    },
+                    $arrayContent
+                );
+                
+                // Only return modified version if something changed
+                if ($processed !== $originalArrayContent) {
+                    return '@class([' . $processed . '])';
+                }
+                
+                return $matches[0];
+            },
+            $content
+        );
+    }
+
+    /**
+     * Process ternary expressions in :class bindings
+     * Example: :class="condition ? 'classes-a' : 'classes-b'"
+     * Also handles simple :class="classes" bindings
+     */
+    private function processClassTernary(string $content, int $minClasses, string $skipPrefix): string
+    {
+        // Process double-quoted :class attributes
+        $content = preg_replace_callback(
+            '/(\s(?:wire:)?(?:x-bind:)?:class\s*=\s*")((?:[^"]|(?<=\\\\)")*?)(")/s',
+            function ($matches) use ($minClasses, $skipPrefix) {
+                return $this->processClassTernaryMatch($matches, $minClasses, $skipPrefix, '"', "'");
+            },
+            $content
+        );
+        
+        // Process single-quoted :class attributes
+        $content = preg_replace_callback(
+            "/(\s(?:wire:)?(?:x-bind:)?:class\s*=\s*')((?:[^']|(?<=\\\\)')*?)(')/s",
+            function ($matches) use ($minClasses, $skipPrefix) {
+                return $this->processClassTernaryMatch($matches, $minClasses, $skipPrefix, "'", '"');
+            },
+            $content
+        );
+        
+        return $content;
+    }
+    
+    /**
+     * Helper method to process a single :class attribute match
+     */
+    private function processClassTernaryMatch(array $matches, int $minClasses, string $skipPrefix, string $outerQuote, string $innerQuote): string
+    {
+        $prefix = $matches[1];
+        $expression = $matches[2];
+        $suffix = $matches[3];
+        
+        // Check if this contains a ternary (has ? character)
+        $hasTernary = str_contains($expression, '?');
+        
+        if ($hasTernary) {
+            // Extract the two branches of the ternary
+            // Pattern: condition ? 'true-branch' : 'false-branch'
+            $innerPattern = '/' . preg_quote($innerQuote, '/') . '([^' . preg_quote($innerQuote, '/') . ']+)' . preg_quote($innerQuote, '/') . '/s';
+            
+            $processed = preg_replace_callback(
+                $innerPattern,
+                function ($branchMatches) use ($minClasses, $skipPrefix, $innerQuote) {
+                    $classList = $branchMatches[1];
+                    
+                    // Skip if already wrapped
+                    if (preg_match('/__[a-z]+-[a-z]+-\d+__/', $classList)) {
+                        return $branchMatches[0];
+                    }
+                    
+                    // Check for never-wrap patterns
+                    foreach ($this->neverWrapPatterns as $pattern) {
+                        if (str_contains($classList, $pattern)) {
+                            return $branchMatches[0];
+                        }
+                    }
+                    
+                    // Parse and count classes
+                    $classes = $this->parseClasses($classList);
+                    if (count($classes) < $minClasses) {
+                        return $branchMatches[0];
+                    }
+                    
+                    // Check for skip prefix
+                    if (! empty($skipPrefix)) {
+                        foreach ($classes as $class) {
+                            if (str_starts_with($class, $skipPrefix)) {
+                                return $branchMatches[0];
+                            }
+                        }
+                    }
+                    
+                    // Generate or reuse wrapper name
+                    $normalizedClassList = $this->normalizeWhitespace($classList);
+                    if (! isset($this->classListMap[$normalizedClassList])) {
+                        $this->classListMap[$normalizedClassList] = $this->generateWrapperName();
+                    }
+                    $wrapperName = $this->classListMap[$normalizedClassList];
+                    
+                    // Wrap the class list
+                    $wrappedClassList = "__{$wrapperName}__ {$classList} __";
+                    
+                    // Log the change
+                    $this->changeLog[] = [
+                        'original' => $classList,
+                        'wrapped' => $wrappedClassList,
+                        'wrapper' => $wrapperName,
+                    ];
+                    
+                    return $innerQuote . $wrappedClassList . $innerQuote;
+                },
+                $expression
+            );
+            
+            return $prefix . $processed . $suffix;
+        } else {
+            // Simple :class="static classes" - reassemble the match format for wrapIfNeeded
+            $reformattedMatch = [
+                0 => $matches[0],
+                1 => $prefix,
+                2 => $expression,
+                3 => $suffix,
+            ];
+            return $this->wrapIfNeeded($reformattedMatch, $minClasses, $skipPrefix, 'simple');
+        }
     }
 
     private function wrapIfNeeded(array $matches, int $minClasses, string $skipPrefix, string $type): string

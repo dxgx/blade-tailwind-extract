@@ -11,6 +11,7 @@ beforeEach(function () {
         resource_path('views/test-wrap-identical.blade.php'),
         resource_path('views/test-wrap-mixed.blade.php'),
         resource_path('views/test-wrap-multiline.blade.php'),
+        resource_path('views/test-debug.blade.php'),
     ];
     foreach ($testFiles as $file) {
         if (File::exists($file)) {
@@ -25,6 +26,7 @@ afterEach(function () {
         resource_path('views/test-wrap-identical.blade.php'),
         resource_path('views/test-wrap-mixed.blade.php'),
         resource_path('views/test-wrap-multiline.blade.php'),
+        resource_path('views/test-debug.blade.php'),
     ];
     foreach ($testFiles as $file) {
         if (File::exists($file)) {
@@ -345,4 +347,172 @@ BLADE;
     // File should not be modified in dry-run mode
     expect($result)->toBe($content)
         ->and($result)->not->toContain('__');
+});
+
+it('wraps conditional class strings in @class arrays', function () {
+    $content = <<<'BLADE'
+<div>
+    <button @class([
+        'flex items-center justify-center size-9',
+        'text-gray-200 cursor-not-allowed opacity-50' => false,
+        'text-red-500 hover:text-red-600 hover:bg-red-50' => true
+    ])>Delete</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // All three strings should be wrapped (each has 3+ classes)
+    preg_match_all('/__([a-z]+-[a-z]+-\d+)__/', $result, $matches);
+    $wrapperNames = $matches[1];
+
+    expect($wrapperNames)->toHaveCount(3)
+        // All should have different wrapper names (different class lists)
+        ->and($wrapperNames[0])->not->toBe($wrapperNames[1])
+        ->and($wrapperNames[1])->not->toBe($wrapperNames[2]);
+    
+    // Verify the conditional syntax is preserved
+    expect($result)->toContain('=>');
+});
+
+it('skips already wrapped conditionals in @class arrays', function () {
+    $content = <<<'BLADE'
+<div>
+    <button @class([
+        '__existing__ flex items-center justify-center __',
+        'text-red-500 hover:text-red-600 hover:bg-red-50' => true
+    ])>Delete</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // Only the second string should get a new wrapper
+    preg_match_all('/__[a-z]+-[a-z]+-\d+__/', $result, $matches);
+    expect($matches[0])->toHaveCount(1); // Only the new wrapper
+    
+    // The existing wrapper should still be there
+    expect($result)->toContain('__existing__');
+});
+
+it('wraps both branches of ternary in :class bindings', function () {
+    $content = <<<'BLADE'
+<div>
+    <button 
+        :class="isPlaying 
+            ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-700' 
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'"
+        class="flex items-center justify-center size-9"
+    >Play</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // All three class strings should be wrapped (both ternary branches + static class)
+    preg_match_all('/__([a-z]+-[a-z]+-\d+)__/', $result, $matches);
+    $wrapperNames = $matches[1];
+
+    expect($wrapperNames)->toHaveCount(3)
+        // All should have different wrapper names (different class lists)
+        ->and($wrapperNames[0])->not->toBe($wrapperNames[1])
+        ->and($wrapperNames[1])->not->toBe($wrapperNames[2]);
+    
+    // Verify the ternary structure is preserved
+    expect($result)->toContain('?')
+        ->and($result)->toContain(':');
+});
+
+it('skips already wrapped ternary branches', function () {
+    $content = <<<'BLADE'
+<div>
+    <button 
+        :class="isPlaying 
+            ? '__existing-1__ bg-blue-500 text-white __' 
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'"
+    >Play</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // Only the false branch should get a new wrapper
+    preg_match_all('/__[a-z]+-[a-z]+-\d+__/', $result, $matches);
+    expect($matches[0])->toHaveCount(1); // Only the new wrapper
+    
+    // The existing wrapper should still be there
+    expect($result)->toContain('__existing-1__');
+});
+
+it('handles elements with both static and dynamic class attributes independently', function () {
+    $content = <<<'BLADE'
+<div>
+    <button 
+        :class="active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+        class="flex items-center justify-center rounded-md"
+    >Toggle</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // Static class should be wrapped (3 classes), but ternary branches have only 2 classes each
+    preg_match_all('/__([a-z]+-[a-z]+-\d+)__/', $result, $matches);
+    expect($matches[0])->toHaveCount(1); // Only the static class wrapper
+    
+    // Verify both attributes exist
+    expect($result)->toContain(':class=')
+        ->and($result)->toContain('class="__');
+});
+
+it('respects minimum class threshold for @class conditionals', function () {
+    $content = <<<'BLADE'
+<div>
+    <button @class([
+        'flex items-center justify-center size-9',
+        'text-sm' => false,
+        'text-red-500 hover:text-red-600 hover:bg-red-50' => true
+    ])>Button</button>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // Only the first and third strings should be wrapped (3+ classes)
+    // Middle one has only 1 class
+    preg_match_all('/__([a-z]+-[a-z]+-\d+)__/', $result, $matches);
+    expect($matches[0])->toHaveCount(2);
+    
+    // 'text-sm' should not be wrapped
+    expect($result)->toMatch("/'text-sm' =>/");
 });
