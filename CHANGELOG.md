@@ -2,6 +2,22 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.2.2 - 2026-05-31
+
+### Added
+- Informative warnings when extraction skips patterns containing reserved classes
+- Support for `group/` variant detection (e.g., `group/item`, `group/card`)
+- Comprehensive test suite for skipped patterns (3 new tests)
+- Detailed skip reason reporting with file path, pattern name, and specific reason
+
+### Changed
+- `containsReservedClasses()` method now checks for both exact class matches and slash variants
+- Skipped patterns are automatically deduplicated to prevent duplicate warnings
+- Extract command now displays clear warnings showing why patterns were skipped
+
+### Fixed
+- Reserved class detection now properly handles Tailwind named group/peer variants
+
 ## 2.2.1 - 2026-05-31
 
 ### Added

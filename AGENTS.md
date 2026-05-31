@@ -72,6 +72,8 @@ src/
    - Generates CSS class: `{PREFIX}-{HASH}-{NAME}` (e.g., `TW-a40f-card-wrapper`)
    - Writes `@apply` rules to CSS file
    - Replaces inline classes with generated name
+   - **Skips reserved classes**: Patterns containing `group`, `group/`, or `peer` are skipped
+   - **Reports skipped patterns**: Displays informative warnings for skipped patterns with reasons
 
 3. **Restore Command** (`dg:blade-tailwind:restore`):
    - Reads `@apply` rules from CSS file
@@ -95,9 +97,10 @@ src/
 - **Semantic wrapper names**: Format `adjective-noun-counter` (e.g., `happy-cat-1`) for human-readable markers
 - **Protected patterns in wrap**: Never wraps class lists containing `__`, `material-symbols-outlined`, or `TW-` prefix
 - **File-based hashing**: Each Blade file gets a unique 4-char hash (configurable) derived from file path to prevent class name collisions
-- **Reserved classes**: `group` and `peer` cannot be extracted (breaks parent-child selectors) and trigger warnings
+- **Reserved classes**: `group`, `group/`, and `peer` cannot be extracted (breaks parent-child selectors) and trigger informative warnings
 - **Pattern support**: Supports `class=""`, `->class([...])`, and `@class([...])`
 - **Singleton service**: `TailwindExtractorService` registered as singleton in container
+- **Skipped pattern deduplication**: Multiple iterations of the same skipped pattern are deduplicated before reporting
 
 ## Development Workflow
 
@@ -109,15 +112,18 @@ src/
 
 ### When Modifying Extraction Logic
 - Main methods in `TailwindExtractorService`:
-  - `extractFromClassAttributes()` - handles `class=""`
-  - `extractFromClassMethod()` - handles `->class([])`
-  - `extractFromAtClassDirective()` - handles `@class([])`
+  - `extract()` - main extraction method, returns array with `processed`, `new_rules`, and `skipped_patterns`
+  - `extractFromClassAttributes()` - handles `class=""`, accepts `&$skippedPatterns` parameter
+  - `extractFromClassMethod()` - handles `->class([])`, accepts `&$skippedPatterns` parameter
+  - `extractFromAtClassDirective()` - handles `@class([])`, accepts `&$skippedPatterns` parameter
+  - `containsReservedClasses()` - checks for reserved classes (group, group/, peer), sets `$reason` by reference
   - `hasExtractablePatterns()` - checks if file contains patterns to extract
   - `getBladeFiles()` - public method to retrieve files for a target
   - `inject()` - restores classes from CSS back to Blade files, returns restored class names
   - `removeRestoredClassesFromCss()` - removes restored CSS rules from output file
-- All use regex to find `__name__ classes __` pattern
+- All extraction methods use regex to find `__name__ classes __` pattern
 - Protected by `$maxIterations` config to prevent infinite loops
+- Skipped patterns are deduplicated by file+name combination before returning
 
 ### When Modifying Command Logic
 - Main methods in `BladeTailwindWrapCommand`:

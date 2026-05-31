@@ -123,9 +123,31 @@ class BladeTailwindExtractCommand extends Command
             $this->comment('   No new rules to add (all classes already extracted)');
         }
 
+        // Display skipped patterns if any
+        if (!empty($result['skipped_patterns'])) {
+            $this->newLine();
+            $this->warn("⚠️  Skipped {$this->pluralize(count($result['skipped_patterns']), 'pattern')} due to reserved classes:");
+            $this->newLine();
+            
+            foreach ($result['skipped_patterns'] as $skipped) {
+                $relativeFile = str_replace(base_path() . '/', '', $skipped['file']);
+                $this->line("   • <fg=yellow>{$skipped['name']}</> in <fg=cyan>{$relativeFile}</>");
+                $this->line("     Reason: {$skipped['reason']}");
+                $this->line("     Classes: <fg=gray>{$skipped['classes']}</>");
+            }
+        }
+
         $this->newLine();
         $this->comment('💡 Tip: Run "dg:blade-tailwind:restore" to reverse this operation');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Helper to pluralize words
+     */
+    protected function pluralize(int $count, string $word): string
+    {
+        return $count . ' ' . ($count === 1 ? $word : $word . 's');
     }
 }

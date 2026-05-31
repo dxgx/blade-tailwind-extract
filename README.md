@@ -52,7 +52,7 @@ The `a40f` hash is derived from the file path, ensuring no conflicts between fil
 - ✅ **Intelligent deduplication** - Identical class lists share the same wrapper name
 - ✅ **Works with `class=""`, `->class([...])`, and `@class([...])`** - Full Blade/Livewire support
 - ✅ **Bidirectional** - Extract for production, restore for development
-- ✅ **Safe** - Reserved classes like `group` and `peer` are automatically skipped
+- ✅ **Safe** - Reserved classes like `group`, `group/`, and `peer` are automatically skipped with informative warnings
 - ✅ **Collision-free** - File-based hashing prevents class name conflicts
 - ✅ **Pattern matching** - Process specific files or entire directories
 - ✅ **Configurable** - Customize prefix, hash length, output path, and more
@@ -276,6 +276,8 @@ return [
     ],
 
     // Reserved Tailwind classes that cannot be extracted
+    // These use parent-child selectors that break when extracted to @apply
+    // Also checks for variants like 'group/' and 'peer/'
     'reserved_classes' => [
         'group',
         'peer',
@@ -285,6 +287,11 @@ return [
     'max_iterations' => 10,
 ];
 ```
+
+**Note:** When the extract command encounters patterns containing reserved classes (like `group`, `group/item`, or `peer`), it will:
+- Skip extraction for that pattern
+- Display an informative warning showing which patterns were skipped and why
+- Continue processing other patterns in the same file
 
 ## Advanced Usage
 

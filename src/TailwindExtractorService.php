@@ -41,13 +41,14 @@ class TailwindExtractorService
         $files = $this->getBladeFiles($target);
 
         if (empty($files)) {
-            return ['processed' => 0, 'new_rules' => 0];
+            return ['processed' => 0, 'new_rules' => 0, 'skipped_patterns' => []];
         }
 
         $existingRules = $this->readExistingCssRules($cssFile);
         $newRules = [];
         $fileRules = [];
         $classRegistry = [];
+        $skippedPatterns = [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
@@ -62,7 +63,8 @@ class TailwindExtractorService
                 $newRules,
                 $existingRules,
                 $fileSpecificRules,
-                $classRegistry
+                $classRegistry,
+                $skippedPatterns
             );
 
             // Extract from ->class([...]) method calls
@@ -73,7 +75,8 @@ class TailwindExtractorService
                 $newRules,
                 $existingRules,
                 $fileSpecificRules,
-                $classRegistry
+                $classRegistry,
+                $skippedPatterns
             );
 
             // Extract from @class([...]) directive calls
@@ -84,7 +87,8 @@ class TailwindExtractorService
                 $newRules,
                 $existingRules,
                 $fileSpecificRules,
-                $classRegistry
+                $classRegistry,
+                $skippedPatterns
             );
 
             if (! empty($fileSpecificRules)) {
@@ -99,9 +103,21 @@ class TailwindExtractorService
             $this->updateCssFile($cssFile, $fileRules, $newRules);
         }
 
+        // Deduplicate skipped patterns (same file + name combination)
+        $uniqueSkippedPatterns = [];
+        $skippedKeys = [];
+        foreach ($skippedPatterns as $skipped) {
+            $key = $skipped['file'] . '::' . $skipped['name'];
+            if (!isset($skippedKeys[$key])) {
+                $skippedKeys[$key] = true;
+                $uniqueSkippedPatterns[] = $skipped;
+            }
+        }
+
         return [
             'processed' => count($files),
             'new_rules' => count($newRules),
+            'skipped_patterns' => $uniqueSkippedPatterns,
         ];
     }
 
@@ -331,10 +347,18 @@ class TailwindExtractorService
     /**
      * Check if content contains reserved Tailwind classes
      */
-    protected function containsReservedClasses(string $content): bool
+    protected function containsReservedClasses(string $content, ?string &$reason = null): bool
     {
         foreach ($this->reservedClasses as $reservedClass) {
+            // Check for exact class match (e.g., "group")
             if (preg_match('/(?:^|\s)' . preg_quote($reservedClass, '/') . '(?:\s|$)/', $content)) {
+                $reason = "contains reserved class '$reservedClass'";
+                return true;
+            }
+            
+            // Also check for class with slash (e.g., "group/")
+            if (preg_match('/(?:^|\s)' . preg_quote($reservedClass, '/') . '\//', $content)) {
+                $reason = "contains reserved class variant '$reservedClass/'";
                 return true;
             }
         }
@@ -386,7 +410,8 @@ class TailwindExtractorService
         array &$newRules,
         array &$existingRules,
         array &$fileSpecificRules,
-        array &$classRegistry
+        array &$classRegistry,
+        array &$skippedPatterns = []
     ): string {
         $fileHash = $this->getFileHash($file);
         $iteration = 0;
@@ -397,7 +422,7 @@ class TailwindExtractorService
 
             $newContent = preg_replace_callback(
                 '/class="([^"]*?)__([a-zA-Z0-9\-_]+)__(.*?)__([^"]*?)"/',
-                function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, &$hasMatch, $originalContent) {
+                function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, &$hasMatch, $originalContent, &$skippedPatterns) {
                     $hasMatch = true;
                     $before = trim($matches[1]);
                     $name = trim($matches[2]);
@@ -406,7 +431,15 @@ class TailwindExtractorService
 
                     $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                    if ($this->containsReservedClasses($apply)) {
+                    $skipReason = null;
+                    if ($this->containsReservedClasses($apply, $skipReason)) {
+                        // Track skipped pattern
+                        $skippedPatterns[] = [
+                            'file' => $file,
+                            'name' => $name,
+                            'classes' => $apply,
+                            'reason' => $skipReason,
+                        ];
                         // Return original content without modification
                         return $matches[0];
                     }
@@ -455,18 +488,19 @@ class TailwindExtractorService
         array &$newRules,
         array &$existingRules,
         array &$fileSpecificRules,
-        array &$classRegistry
+        array &$classRegistry,
+        array &$skippedPatterns = []
     ): string {
         $fileHash = $this->getFileHash($file);
 
         return preg_replace_callback(
             '/->class\(\[(.*?)\]\)/s',
-            function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent) {
+            function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent, &$skippedPatterns) {
                 $classContent = $matches[1];
 
                 $processedContent = preg_replace_callback(
                     '/([\'"])([^\'"]*)__([a-zA-Z0-9\-_]+)__(.*?)__([^\'"]*)([\'"])/s',
-                    function ($quoteMatches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent) {
+                    function ($quoteMatches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent, &$skippedPatterns) {
                         $quote = $quoteMatches[1];
                         $before = trim($quoteMatches[2]);
                         $name = trim($quoteMatches[3]);
@@ -476,7 +510,15 @@ class TailwindExtractorService
 
                         $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                        if ($this->containsReservedClasses($apply)) {
+                        $skipReason = null;
+                        if ($this->containsReservedClasses($apply, $skipReason)) {
+                            // Track skipped pattern
+                            $skippedPatterns[] = [
+                                'file' => $file,
+                                'name' => $name,
+                                'classes' => $apply,
+                                'reason' => $skipReason,
+                            ];
                             return $quoteMatches[0];
                         }
 
@@ -521,18 +563,19 @@ class TailwindExtractorService
         array &$newRules,
         array &$existingRules,
         array &$fileSpecificRules,
-        array &$classRegistry
+        array &$classRegistry,
+        array &$skippedPatterns = []
     ): string {
         $fileHash = $this->getFileHash($file);
 
         return preg_replace_callback(
             '/@class\(\[(.*?)\]\)/s',
-            function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent) {
+            function ($matches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent, &$skippedPatterns) {
                 $classContent = $matches[1];
 
                 $processedContent = preg_replace_callback(
                     '/([\'"])([^\'"]*)__([a-zA-Z0-9\-_]+)__(.*?)__([^\'"]*)([\'"])(\s*=>\s*[^,\]]+)?/s',
-                    function ($quoteMatches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent) {
+                    function ($quoteMatches) use (&$newRules, &$existingRules, &$fileSpecificRules, $file, $fileHash, &$classRegistry, $originalContent, &$skippedPatterns) {
                         $quote = $quoteMatches[1];
                         $before = trim($quoteMatches[2]);
                         $name = trim($quoteMatches[3]);
@@ -543,7 +586,15 @@ class TailwindExtractorService
 
                         $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                        if ($this->containsReservedClasses($apply)) {
+                        $skipReason = null;
+                        if ($this->containsReservedClasses($apply, $skipReason)) {
+                            // Track skipped pattern
+                            $skippedPatterns[] = [
+                                'file' => $file,
+                                'name' => $name,
+                                'classes' => $apply,
+                                'reason' => $skipReason,
+                            ];
                             return $quoteMatches[0];
                         }
 
