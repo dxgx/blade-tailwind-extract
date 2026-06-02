@@ -191,17 +191,52 @@ class BladeTailwindWrapCommand extends Command
         $content = $this->processClassTernary($content, $minClasses, $skipPrefix);
 
         // Pattern 1: Static class="..." and wire:class="..." (NOT :class or x-bind:class which are dynamic)
+        // Use separate patterns for double and single quotes to handle arbitrary values with quotes
+        // Process double-quoted attributes
         $content = preg_replace_callback(
-            '/(\s(?:wire:)?class\s*=\s*["\'])([^"\']*)(["\'])/s',
+            '/(\s(?:wire:)?class\s*=\s*")([^"]*)(")/s',
+            fn ($matches) => $this->wrapIfNeeded($matches, $minClasses, $skipPrefix, 'simple'),
+            $content
+        );
+        
+        // Process single-quoted attributes
+        $content = preg_replace_callback(
+            '/(\s(?:wire:)?class\s*=\s*\')([^\']*)(\')/s',
             fn ($matches) => $this->wrapIfNeeded($matches, $minClasses, $skipPrefix, 'simple'),
             $content
         );
 
         // Pattern 2: @class([...]) - First string only (for backward compatibility with simple arrays)
         // This only matches if Pattern 3 didn't already process it
+        // Process double-quoted strings
         $content = preg_replace_callback(
-            '/@class\(\[\s*(["\'])([^"\']*)(["\'])/s',
-            fn ($matches) => $this->wrapIfNeeded($matches, $minClasses, $skipPrefix, 'directive'),
+            '/@class\(\[\s*"([^"]*)"/s',
+            function ($matches) use ($minClasses, $skipPrefix) {
+                // Reformat to match wrapIfNeeded expected format
+                $reformatted = [
+                    0 => $matches[0],
+                    1 => '"',  // Just the quote, wrapIfNeeded will add '@class([' prefix
+                    2 => $matches[1],  // The class list
+                    3 => '"',
+                ];
+                return $this->wrapIfNeeded($reformatted, $minClasses, $skipPrefix, 'directive');
+            },
+            $content
+        );
+        
+        // Process single-quoted strings
+        $content = preg_replace_callback(
+            '/@class\(\[\s*\'([^\']*)\'/s',
+            function ($matches) use ($minClasses, $skipPrefix) {
+                // Reformat to match wrapIfNeeded expected format
+                $reformatted = [
+                    0 => $matches[0],
+                    1 => '\'',  // Just the quote, wrapIfNeeded will add '@class([' prefix
+                    2 => $matches[1],  // The class list
+                    3 => '\'',
+                ];
+                return $this->wrapIfNeeded($reformatted, $minClasses, $skipPrefix, 'directive');
+            },
             $content
         );
 

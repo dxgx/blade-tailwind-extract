@@ -516,3 +516,27 @@ BLADE;
     // 'text-sm' should not be wrapped
     expect($result)->toMatch("/'text-sm' =>/");
 });
+
+it('handles arbitrary values with quotes in class attributes', function () {
+    $content = <<<'BLADE'
+<div>
+    <div class="w-11 h-6 bg-gray-200 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all bg-blue-600">Toggle</div>
+</div>
+BLADE;
+
+    File::put(resource_path('views/test-wrap-mixed.blade.php'), $content);
+
+    $this->artisan('dg:blade-tailwind:wrap', ['target' => resource_path('views/test-wrap-mixed.blade.php')])
+        ->assertSuccessful();
+
+    $result = File::get(resource_path('views/test-wrap-mixed.blade.php'));
+
+    // Should wrap the class list correctly without breaking the after:content-[''] part
+    preg_match_all('/__([a-z]+-[a-z]+-\d+)__/', $result, $matches);
+    expect($matches[0])->toHaveCount(1);
+    
+    // The closing __ should be at the end, not in the middle of after:content-['']
+    expect($result)->toContain("after:content-['']")
+        ->and($result)->toMatch('/__[a-z]+-[a-z]+-\d+__ .* bg-blue-600 __"/')
+        ->and($result)->not->toContain("after:content-[ __''");
+});

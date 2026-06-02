@@ -2,6 +2,17 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.4.0 - 2026-06-02
+
+### Fixed
+- **Wrap command now correctly handles arbitrary values with quotes**: Fixed regex patterns for static `class=""` and `@class([...])` attributes to properly handle Tailwind arbitrary values containing quotes (e.g., `after:content-['']`, `before:content-[""]`)
+- Static class attributes and `@class` directives now use separate patterns for double-quoted and single-quoted attributes to prevent early quote matching
+- Closing `__` marker now correctly appears at the end of class lists instead of breaking inside arbitrary values
+
+### Added
+- Test coverage for wrapping class lists with arbitrary values containing quotes
+- Vendor folder exclusions to optimize disk space
+
 ## 2.3.0 - 2026-05-31
 
 ### Added

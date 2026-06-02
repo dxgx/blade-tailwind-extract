@@ -256,6 +256,24 @@ Elements with both static `class` and dynamic `:class` attributes (wrapped indep
 - **Conditional arrays** in `@class` have all string values examined and wrapped independently
 - **Static and dynamic** attributes on the same element are processed independently
 
+### Special Cases Handled
+
+The wrap command correctly handles complex Tailwind patterns:
+
+**Arbitrary values with quotes:**
+```blade
+<!-- Classes with arbitrary values containing quotes are fully supported -->
+<div class="after:content-[''] before:content-['>'] w-full">Content</div>
+
+<!-- After wrapping (closing __ correctly placed at end) -->
+<div class="__happy-cat-1__ after:content-[''] before:content-['>'] w-full __">Content</div>
+```
+
+**Reserved classes (automatically skipped during extraction):**
+- Classes containing `group`, `group/`, or `peer` can be wrapped but won't be extracted
+- The extract command will skip these patterns with informative warnings
+- This prevents breaking Tailwind's parent-child and sibling selectors
+
 ### Extract Classes (Development → Production)
 
 The `target` parameter accepts multiple formats:

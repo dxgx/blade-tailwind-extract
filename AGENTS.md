@@ -103,6 +103,7 @@ src/
 - **Wrap command deduplication**: Uses normalized whitespace comparison to match identical class lists, ensuring same wrapper names for duplicates
 - **Semantic wrapper names**: Format `adjective-noun-counter` (e.g., `happy-cat-1`) for human-readable markers
 - **Protected patterns in wrap**: Never wraps class lists containing `__`, `material-symbols-outlined`, or `TW-` prefix
+- **Arbitrary values with quotes**: Separate regex patterns for double-quoted and single-quoted attributes prevent early quote matching in arbitrary values like `after:content-['']`
 - **File-based hashing**: Each Blade file gets a unique 4-char hash (configurable) derived from file path to prevent class name collisions
 - **Reserved classes**: `group`, `group/`, and `peer` cannot be extracted (breaks parent-child selectors) and trigger informative warnings
 - **Pattern support**: Comprehensive support for `class=""`, `wire:class=""`, `:class` (static & ternary), `x-bind:class`, `@class([])` (simple & conditional)
@@ -152,8 +153,11 @@ src/
   - **Processing order**:
     1. Pattern 3: `@class([...])` conditionals (all strings in array)
     2. Pattern 4: `:class` ternary expressions and simple bindings
-    3. Pattern 1: Static `class` and `wire:class` attributes
-    4. Pattern 2: Simple `@class([...])` arrays (backward compatibility)
+    3. Pattern 1a: Static `class` and `wire:class` attributes with double quotes
+    3. Pattern 1b: Static `class` and `wire:class` attributes with single quotes
+    4. Pattern 2a: Simple `@class([...])` arrays with double quotes (backward compatibility)
+    4. Pattern 2b: Simple `@class([...])` arrays with single quotes (backward compatibility)
+  - **Quote handling**: Double-quoted and single-quoted attributes are processed separately to correctly handle arbitrary values like `after:content-['']` without early quote termination
   - Properties:
     - `$adjectives` and `$nouns` - pools for semantic name generation
     - `$classListMap` - tracks class lists to wrapper names (for deduplication)
