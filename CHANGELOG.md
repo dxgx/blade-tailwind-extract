@@ -2,6 +2,25 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.4.1 - 2026-06-04
+
+### Fixed
+- **Critical prefix class name restoration bug**: Fixed restore operation to process class names sorted by length (longest first) to prevent partial replacements when one class name is a prefix of another (e.g., `TW-242f-card` and `TW-242f-card-shadow` now restore correctly without corruption)
+- **Blade variable interpolation wrapping bug**: Wrap command now correctly skips class attributes containing Blade variable interpolation (`{{ }}`) to preserve dynamic behavior
+- All three injection methods (`injectIntoClassAttributes`, `injectIntoClassMethod`, `injectIntoAtClassDirective`) now use `uksort()` to sort rules by class name length before processing
+
+### Added
+- **PrefixClassNameRestoreTest**: 6 comprehensive tests covering prefix restoration scenarios (basic pairs, multi-level nesting, all three patterns, mixed CSS order, multiple occurrences)
+- **DynamicClassAttributesTest**: 6 tests verifying wrap/extract correctly handle dynamic Blade interpolation in `class=""`, `wire:class=""`, `:class`, `@class[]` patterns
+- **MixedDynamicExtractedClassesTest**: 5 tests for complex scenarios mixing static extracted classes (TW-*) with dynamic `{{ }}` interpolation
+- **IntegrationMultiDirectoryTest**: 4 end-to-end tests covering full wrap→extract→restore workflow across multiple directories with various patterns
+- Total of 21 new tests with 104 assertions added to ensure reliability
+
+### Technical Details
+- Added Blade interpolation detection (`{{ }}` check) in `wrapIfNeeded()`, `processAtClassConditionals()`, and `processClassTernary()` methods
+- Longest-first sorting prevents regex partial matches in class name restoration
+- Test coverage now includes file hash consistency verification across bulk and individual operations
+
 ## 2.4.0 - 2026-06-02
 
 ### Fixed

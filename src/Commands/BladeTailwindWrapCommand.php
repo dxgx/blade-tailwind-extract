@@ -265,6 +265,11 @@ class BladeTailwindWrapCommand extends Command
                         $classList = $stringMatches[2];
                         $conditionalPart = $stringMatches[3] ?? '';
                         
+                        // Skip if classList contains Blade variable interpolation
+                        if (str_contains($classList, '{{') || str_contains($classList, '}}')) {
+                            return $stringMatches[0];
+                        }
+                        
                         // Skip if already wrapped
                         if (preg_match('/__[a-z]+-[a-z]+-\d+__/', $classList)) {
                             return $stringMatches[0];
@@ -375,6 +380,11 @@ class BladeTailwindWrapCommand extends Command
                 function ($branchMatches) use ($minClasses, $skipPrefix, $innerQuote) {
                     $classList = $branchMatches[1];
                     
+                    // Skip if classList contains Blade variable interpolation
+                    if (str_contains($classList, '{{') || str_contains($classList, '}}')) {
+                        return $branchMatches[0];
+                    }
+                    
                     // Skip if already wrapped
                     if (preg_match('/__[a-z]+-[a-z]+-\d+__/', $classList)) {
                         return $branchMatches[0];
@@ -447,6 +457,11 @@ class BladeTailwindWrapCommand extends Command
             $prefix = '@class(['.$matches[1];
             $classList = $matches[2];
             $suffix = $matches[3];
+        }
+
+        // Skip if classList contains Blade variable interpolation (dynamic classes)
+        if (str_contains($classList, '{{') || str_contains($classList, '}}')) {
+            return $matches[0];
         }
 
         // Check for never-wrap patterns (configured patterns to always skip)

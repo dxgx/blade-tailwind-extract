@@ -640,6 +640,9 @@ class TailwindExtractorService
      */
     protected function injectIntoClassAttributes(string $content, array $rules, int &$totalInjected, array &$injectedClasses): string
     {
+        // Sort rules by class name length (longest first) to prevent partial replacements
+        uksort($rules, fn($a, $b) => strlen($b) - strlen($a));
+        
         foreach ($rules as $class => $apply) {
             $content = preg_replace_callback(
                 '/class="([^"]*)\b' . preg_quote($class, '/') . '\b([^"]*)"/',
@@ -668,8 +671,9 @@ class TailwindExtractorService
      * Inject into ->class([...]) method calls
      */
     protected function injectIntoClassMethod(string $content, array $rules, int &$totalInjected, array &$injectedClasses): string
-    {
-        return preg_replace_callback(
+    {        // Sort rules by class name length (longest first) to prevent partial replacements
+        uksort($rules, fn($a, $b) => strlen($b) - strlen($a));
+                return preg_replace_callback(
             '/->class\(\[(.*?)\]\)/s',
             function ($matches) use ($rules, &$totalInjected, &$injectedClasses) {
                 $classContent = $matches[1];
@@ -707,8 +711,9 @@ class TailwindExtractorService
      * Inject into @class([...]) directive calls
      */
     protected function injectIntoAtClassDirective(string $content, array $rules, int &$totalInjected, array &$injectedClasses): string
-    {
-        return preg_replace_callback(
+    {        // Sort rules by class name length (longest first) to prevent partial replacements
+        uksort($rules, fn($a, $b) => strlen($b) - strlen($a));
+                return preg_replace_callback(
             '/@class\(\[(.*?)\]\)/s',
             function ($matches) use ($rules, &$totalInjected, &$injectedClasses) {
                 $classContent = $matches[1];
