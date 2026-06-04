@@ -2,6 +2,35 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.5.0 - 2026-06-05
+
+### Added
+- **Automatic reserved class separation**: `group*` and `peer*` classes are now automatically moved outside wrapper markers and extraction instead of skipping the entire pattern, preventing CSS parent-child selector breakage
+- **Comprehensive reserved class detection**: Detects all variants including `group`, `group/`, `group-*:`, `group-*/`, `peer`, `peer/`, `peer-*:`, `peer-*/`
+- **Reserved class moving feedback**: Wrap command summary now displays count of moved reserved classes with cyan highlighting
+- 25 new comprehensive tests covering reserved class moving behavior:
+  - `ReservedClassesMovingTest`: 12 tests validating extraction with automatic separation
+  - `WrapReservedClassesTest`: 13 tests validating wrap command with automatic separation
+- `isReservedClass()` method: Checks if a class matches any reserved pattern
+- `separateReservedClasses()` method: Separates classes into extractable and reserved groups
+
+### Changed
+- **Wrap command**: All pattern processing methods (`wrapIfNeeded()`, `processAtClassConditionals()`, `processClassTernary()`) now separate reserved classes before checking minimum threshold
+- **Extract command**: All extraction methods (`extractFromClassAttributes()`, `extractFromClassMethod()`, `extractFromAtClassDirective()`) now use separation logic instead of skip logic
+- **CSS output**: Only extractable classes appear in `@apply` rules; reserved classes remain inline after generated class name
+- **Pattern threshold**: Minimum class count now checks extractable classes only, ignoring reserved classes
+- **Order preservation**: Reserved classes maintain their original order when moved outside wrappers
+
+### Fixed
+- **SkippedPatternsTest**: Updated 8 tests to reflect new behavior (reserved classes now extracted with separation instead of skipped entirely)
+- **CommandTest**: Fixed 4 tests with incorrect config key (`blade-tailwind-extract.search_path` → `dg-blade-tailwind-extract.search_path`) and confirmation expectation types
+
+### Technical Details
+- Reserved classes are parsed and separated during both wrap and extract operations
+- Deduplication in wrap command now based on extractable classes only (reserved classes don't affect wrapper name assignment)
+- Empty extractable class lists are still skipped with informative reason: "only contains reserved classes"
+- CSS file comments may contain reserved class names in file paths (e.g., `group-hover.blade.php`), so tests now validate only rule bodies
+
 ## 2.4.1 - 2026-06-04
 
 ### Fixed

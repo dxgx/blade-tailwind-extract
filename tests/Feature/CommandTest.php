@@ -9,7 +9,12 @@ beforeEach(function () {
     $this->testViewPath = base_path('tests/fixtures/views');
     $this->testCssPath = base_path('tests/fixtures/css/test-tw.css');
     
-    File::ensureDirectoryExists(dirname($this->testViewPath));
+    // Clean up any existing files first
+    if (File::isDirectory($this->testViewPath)) {
+        File::deleteDirectory($this->testViewPath);
+    }
+    
+    File::ensureDirectoryExists($this->testViewPath);
     File::ensureDirectoryExists(dirname($this->testCssPath));
     
     // Override ignored_directories to allow test files (Orchestra Testbench paths contain /vendor/)
@@ -20,6 +25,11 @@ afterEach(function () {
     // Clean up test files
     if (File::exists($this->testCssPath)) {
         File::delete($this->testCssPath);
+    }
+    
+    // Clean up test view directory
+    if (File::isDirectory($this->testViewPath)) {
+        File::deleteDirectory($this->testViewPath);
     }
 });
 
@@ -43,7 +53,7 @@ it('can run extract command with a specific target', function () {
 
 it('prompts for confirmation when no target is provided', function () {
     // Override config for this test
-    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $this->testViewPath]);
     
     // Create some test blade files
     File::put($this->testViewPath . '/file1.blade.php', '<div class="__test__ bg-red-500 __"></div>');
@@ -52,7 +62,7 @@ it('prompts for confirmation when no target is provided', function () {
     $this->artisan(BladeTailwindExtractCommand::class, [
         '--css-file' => $this->testCssPath,
     ])
-    ->expectsQuestion('Are you sure you want to process 2 file(s)?', 'no')
+    ->expectsConfirmation('Are you sure you want to process 2 file(s)?', 'no')
     ->expectsOutput('Operation cancelled.')
     ->assertSuccessful();
     
@@ -63,7 +73,7 @@ it('prompts for confirmation when no target is provided', function () {
 
 it('proceeds with operation when both confirmations are accepted', function () {
     // Override config for this test
-    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $this->testViewPath]);
     
     // Create a test blade file
     File::put($this->testViewPath . '/file1.blade.php', '<div class="__test__ bg-red-500 __"></div>');
@@ -84,7 +94,7 @@ it('proceeds with operation when both confirmations are accepted', function () {
 
 it('shows file list in confirmation prompt', function () {
     // Override config for this test
-    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $this->testViewPath]);
     
     // Create test blade files
     $file1 = $this->testViewPath . '/file1.blade.php';
@@ -108,7 +118,7 @@ it('shows file list in confirmation prompt', function () {
 
 it('works with restore command without target parameter', function () {
     // Override config for this test
-    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $this->testViewPath]);
     
     // Create a test blade file with extracted class
     $testFile = $this->testViewPath . '/file1.blade.php';
@@ -131,7 +141,7 @@ it('works with restore command without target parameter', function () {
 it('handles empty search path gracefully', function () {
     // Override config with non-existent path
     $emptyPath = base_path('tests/fixtures/empty');
-    config(['blade-tailwind-extract.search_path' => $emptyPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $emptyPath]);
     
     File::ensureDirectoryExists($emptyPath);
     
@@ -147,7 +157,7 @@ it('handles empty search path gracefully', function () {
 
 it('skips all confirmations when --yy flag is provided', function () {
     // Override config for this test
-    config(['blade-tailwind-extract.search_path' => $this->testViewPath]);
+    config(['dg-blade-tailwind-extract.search_path' => $this->testViewPath]);
     
     // Create test blade files
     File::put($this->testViewPath . '/file1.blade.php', '<div class="__test__ bg-red-500 __"></div>');

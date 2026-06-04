@@ -27,44 +27,10 @@ afterEach(function () {
     }
 });
 
-it('skips patterns containing group class and reports them', function () {
+it('extracts patterns containing group class with group moved outside', function () {
     $testFile = $this->testViewPath . '/test-group.blade.php';
     $content = <<<'BLADE'
-<div class="__wrapper1__ group rounded-lg bg-white __">
-    <p>Content</p>
-</div>
-<div class="__wrapper2__ flex items-center __">
-    <span>Valid pattern</span>
-</div>
-BLADE;
-
-    File::put($testFile, $content);
-
-    $result = $this->service->extract($testFile, $this->testCssPath);
-    
-    expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('wrapper1');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('group');
-    
-    // Verify the Blade file still contains the group class inline
-    $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__wrapper1__ group rounded-lg bg-white __');
-    expect($bladeContent)->toContain('TW-'); // The valid pattern should be extracted
-    
-    // Verify CSS file was created and contains only the valid pattern
-    expect(File::exists($this->testCssPath))->toBeTrue();
-    $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('wrapper2');
-    expect($cssContent)->not->toContain('wrapper1');
-});
-
-it('skips patterns containing group/ variant and reports them', function () {
-    $testFile = $this->testViewPath . '/test-group-variant.blade.php';
-    $content = <<<'BLADE'
-<div class="__wrapper1__ group/item hover:bg-gray-100 __">
+<div class="__wrapper1__ group rounded-lg bg-white p-4 __">
     <p>Content</p>
 </div>
 <div class="__wrapper2__ flex items-center text-sm __">
@@ -76,62 +42,82 @@ BLADE;
 
     $result = $this->service->extract($testFile, $this->testCssPath);
     
+    // One file processed with multiple patterns extracted
     expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('wrapper1');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('group/');
+    expect($result['new_rules'])->toBe(2);
+    expect($result['skipped_patterns'])->toBeEmpty();
     
-    // Verify the Blade file still contains the group/item class inline
+    // Verify the Blade file has group class after the generated class
     $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__wrapper1__ group/item hover:bg-gray-100 __');
-    expect($bladeContent)->toContain('TW-'); // The valid pattern should be extracted
+    expect($bladeContent)->toContain('TW-')
+        ->and($bladeContent)->toContain('group');
     
-    // Verify CSS file contains only the valid pattern
+    // Verify CSS file contains both patterns without the group class
     expect(File::exists($this->testCssPath))->toBeTrue();
     $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('wrapper2');
-    expect($cssContent)->not->toContain('wrapper1');
+    expect($cssContent)->toContain('wrapper1')
+        ->and($cssContent)->toContain('wrapper2')
+        ->and($cssContent)->toContain('@apply rounded-lg bg-white p-4;')
+        ->and($cssContent)->not->toContain(' group');
 });
 
-it('skips patterns containing peer class and reports them', function () {
-    $testFile = $this->testViewPath . '/test-peer.blade.php';
+it('extracts patterns containing group/ variant with reserved classes moved', function () {
+    $testFile = $this->testViewPath . '/test-group-variant.blade.php';
     $content = <<<'BLADE'
-<input type="checkbox" class="__checkbox__ peer sr-only __" />
-<label class="__label__ cursor-pointer text-gray-700 __">Label</label>
-BLADE;
-
-    File::put($testFile, $content);
-
-    $result = $this->service->extract($testFile, $this->testCssPath);
-    
-    expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('checkbox');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('peer');
-    
-    // Verify CSS file contains only the label pattern
-    expect(File::exists($this->testCssPath))->toBeTrue();
-    $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('label');
-    expect($cssContent)->not->toContain('checkbox');
-    
-    // Verify the Blade file still contains the peer class inline
-    $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__checkbox__ peer sr-only __');
-});
-
-it('skips patterns containing group-hover variant and reports them', function () {
-    $testFile = $this->testViewPath . '/test-group-hover.blade.php';
-    $content = <<<'BLADE'
-<div class="__wrapper1__ group-hover:bg-blue-500 rounded-lg __">
+<div class="__wrapper1__ group/item hover:bg-gray-100 p-2 __">
     <p>Content</p>
 </div>
-<div class="__wrapper2__ flex items-center __">
-    <span>Valid pattern</span>
+BLADE;
+
+    File::put($testFile, $content);
+
+    $result = $this->service->extract($testFile, $this->testCssPath);
+    
+    expect($result['processed'])->toBe(1);
+    expect($result['new_rules'])->toBe(1);
+    expect($result['skipped_patterns'])->toBeEmpty();
+    
+    // Verify the Blade file has group/item moved outside
+    $bladeContent = File::get($testFile);
+    expect($bladeContent)->toContain('TW-')
+        ->and($bladeContent)->toContain('group/item');
+    
+    // Verify CSS file contains only extractable classes
+    expect(File::exists($this->testCssPath))->toBeTrue();
+    $cssContent = File::get($this->testCssPath);
+    expect($cssContent)->toContain('@apply hover:bg-gray-100 p-2;')
+        ->and($cssContent)->not->toContain('group/');
+});
+
+it('extracts patterns containing peer class with peer moved outside', function () {
+    $testFile = $this->testViewPath . '/test-peer.blade.php';
+    $content = <<<'BLADE'
+<input type="checkbox" class="__checkbox__ peer sr-only rounded __" />
+BLADE;
+
+    File::put($testFile, $content);
+
+    $result = $this->service->extract($testFile, $this->testCssPath);
+    
+    expect($result['processed'])->toBe(1);
+    expect($result['new_rules'])->toBe(1);
+    expect($result['skipped_patterns'])->toBeEmpty();
+    
+    // Verify peer class is moved outside
+    $bladeContent = File::get($testFile);
+    expect($bladeContent)->toContain('peer');
+    
+    // Verify CSS file contains only extractable classes
+    $cssContent = File::get($this->testCssPath);
+    expect($cssContent)->toContain('@apply sr-only rounded;')
+        ->and($cssContent)->not->toContain(' peer');
+});
+
+it('extracts patterns containing group-hover variant with reserved classes moved', function () {
+    $testFile = $this->testViewPath . '/test-group-hover.blade.php';
+    $content = <<<'BLADE'
+<div class="__wrapper1__ group-hover:bg-blue-500 rounded-lg p-4 border __">
+    <p>Content</p>
 </div>
 BLADE;
 
@@ -141,29 +127,29 @@ BLADE;
     
     expect($result['processed'])->toBe(1);
     expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('wrapper1');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('group-*:');
+    expect($result['skipped_patterns'])->toBeEmpty();
     
-    // Verify the Blade file still contains the group-hover class inline
+    // Verify group-hover is moved outside
     $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__wrapper1__ group-hover:bg-blue-500 rounded-lg __');
-    expect($bladeContent)->toContain('TW-'); // The valid pattern should be extracted
+    expect($bladeContent)->toContain('group-hover:bg-blue-500');
     
-    // Verify CSS file contains only the valid pattern
+    // Verify CSS file contains only extractable classes
     expect(File::exists($this->testCssPath))->toBeTrue();
     $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('wrapper2');
-    expect($cssContent)->not->toContain('wrapper1');
+    
+    // Extract just the CSS rules (without comments)
+    preg_match_all('/\.TW-[^\{]+\{([^\}]+)\}/', $cssContent, $matches);
+    $rules = implode(' ', $matches[1]);
+    
+    expect($cssContent)->toContain('@apply rounded-lg p-4 border;')
+        ->and($rules)->not->toContain('group-hover');
 });
 
-it('skips patterns containing peer-focus variant and reports them', function () {
+it('extracts patterns containing peer-focus variant with reserved classes moved', function () {
     $testFile = $this->testViewPath . '/test-peer-focus.blade.php';
     $content = <<<'BLADE'
 <input type="text" class="peer" />
-<div class="__error__ peer-focus:text-red-500 text-sm __">Error message</div>
-<div class="__label__ text-gray-700 font-medium __">Valid label</div>
+<div class="__error__ peer-focus:text-red-500 text-sm mt-1 block __">Error message</div>
 BLADE;
 
     File::put($testFile, $content);
@@ -172,26 +158,27 @@ BLADE;
     
     expect($result['processed'])->toBe(1);
     expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('error');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('peer-*:');
+    expect($result['skipped_patterns'])->toBeEmpty();
     
-    // Verify CSS file contains only the label pattern
-    expect(File::exists($this->testCssPath))->toBeTrue();
-    $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('label');
-    expect($cssContent)->not->toContain('error');
-    
-    // Verify the Blade file still contains the peer-focus class inline
+    // Verify peer-focus is moved outside
     $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__error__ peer-focus:text-red-500 text-sm __');
+    expect($bladeContent)->toContain('peer-focus:text-red-500');
+    
+    // Verify CSS file contains only extractable classes
+    $cssContent = File::get($this->testCssPath);
+    
+    // Extract just the CSS rules (without comments)
+    preg_match_all('/\.TW-[^\{]+\{([^\}]+)\}/', $cssContent, $matches);
+    $rules = implode(' ', $matches[1]);
+    
+    expect($cssContent)->toContain('@apply text-sm mt-1 block;')
+        ->and($rules)->not->toContain('peer-focus');
 });
 
-it('skips patterns containing group-active variant and reports them', function () {
+it('extracts patterns containing group-active variant with reserved classes moved', function () {
     $testFile = $this->testViewPath . '/test-group-active.blade.php';
     $content = <<<'BLADE'
-<button class="__btn__ group-active:scale-95 bg-blue-500 __">
+<button class="__btn__ group-active:scale-95 bg-blue-500 px-4 py-2 __">
     Click me
 </button>
 BLADE;
@@ -201,22 +188,29 @@ BLADE;
     $result = $this->service->extract($testFile, $this->testCssPath);
     
     expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(0);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('btn');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('group-*:');
+    expect($result['new_rules'])->toBe(1);
+    expect($result['skipped_patterns'])->toBeEmpty();
     
-    // Verify the Blade file still contains the original classes
+    // Verify group-active is moved outside
     $bladeContent = File::get($testFile);
-    expect($bladeContent)->toContain('__btn__ group-active:scale-95 bg-blue-500 __');
+    expect($bladeContent)->toContain('group-active:scale-95');
+    
+    // Verify CSS file contains only extractable classes
+    $cssContent = File::get($this->testCssPath);
+    
+    // Extract just the CSS rules (without comments)
+    preg_match_all('/\.TW-[^\{]+\{([^\}]+)\}/', $cssContent, $matches);
+    $rules = implode(' ', $matches[1]);
+    
+    expect($cssContent)->toContain('@apply bg-blue-500 px-4 py-2;')
+        ->and($rules)->not->toContain('group-active');
 });
 
-it('skips patterns containing peer-checked variant and reports them', function () {
+it('extracts patterns containing peer-checked variant with reserved classes moved', function () {
     $testFile = $this->testViewPath . '/test-peer-checked.blade.php';
     $content = <<<'BLADE'
 <input type="checkbox" class="peer" />
-<div class="__indicator__ peer-checked:bg-green-500 bg-gray-200 __">
+<div class="__indicator__ peer-checked:bg-green-500 bg-gray-200 rounded p-2 __">
     Checkmark
 </div>
 BLADE;
@@ -226,44 +220,61 @@ BLADE;
     $result = $this->service->extract($testFile, $this->testCssPath);
     
     expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(0);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(1);
-    expect($result['skipped_patterns'][0]['name'])->toBe('indicator');
-    expect($result['skipped_patterns'][0]['reason'])->toContain('peer-*:');
+    expect($result['new_rules'])->toBe(1);
+    expect($result['skipped_patterns'])->toBeEmpty();
+    
+    // Verify peer-checked is moved outside
+    $bladeContent = File::get($testFile);
+    expect($bladeContent)->toContain('peer-checked:bg-green-500');
+    
+    // Verify CSS file contains only extractable classes
+    $cssContent = File::get($this->testCssPath);
+    
+    // Extract just the CSS rules (without comments)
+    preg_match_all('/\.TW-[^\{]+\{([^\}]+)\}/', $cssContent, $matches);
+    $rules = implode(' ', $matches[1]);
+    
+    expect($cssContent)->toContain('@apply bg-gray-200 rounded p-2;')
+        ->and($rules)->not->toContain('peer-checked');
 });
 
-it('skips multiple reserved class variants in the same file', function () {
+it('extracts multiple reserved class variants in the same file with all moved', function () {
     $testFile = $this->testViewPath . '/test-multiple-variants.blade.php';
     $content = <<<'BLADE'
-<div class="__card__ group hover:shadow-lg __">
-    <h2 class="__title__ group-hover:text-blue-500 text-gray-900 __">Title</h2>
-    <p class="__body__ text-gray-600 leading-relaxed __">Valid pattern</p>
+<div class="__card__ group hover:shadow-lg p-4 rounded __">
+    <h2 class="__title__ group-hover:text-blue-500 text-gray-900 text-lg font-bold __">Title</h2>
+    <p class="__body__ text-gray-600 leading-relaxed mt-2 __">Valid pattern</p>
 </div>
 <input type="checkbox" class="peer" />
-<label class="__label__ peer-checked:font-bold cursor-pointer __">Check me</label>
+<label class="__label__ peer-checked:font-bold cursor-pointer text-sm block __">Check me</label>
 BLADE;
 
     File::put($testFile, $content);
 
     $result = $this->service->extract($testFile, $this->testCssPath);
     
+    // One file processed with all patterns extracted
     expect($result['processed'])->toBe(1);
-    expect($result['new_rules'])->toBe(1);
-    expect($result['skipped_patterns'])->toBeArray();
-    expect(count($result['skipped_patterns']))->toBe(3);
+    expect($result['new_rules'])->toBe(4);
+    expect($result['skipped_patterns'])->toBeEmpty();
     
-    // Verify all three patterns were skipped
-    $skippedNames = array_column($result['skipped_patterns'], 'name');
-    expect($skippedNames)->toContain('card');
-    expect($skippedNames)->toContain('title');
-    expect($skippedNames)->toContain('label');
+    // Verify all reserved classes are in the output
+    $bladeContent = File::get($testFile);
+    expect($bladeContent)->toContain('group')
+        ->and($bladeContent)->toContain('group-hover:text-blue-500')
+        ->and($bladeContent)->toContain('peer-checked:font-bold');
     
-    // Verify CSS file contains only the valid body pattern
-    expect(File::exists($this->testCssPath))->toBeTrue();
+    // Verify CSS has only extractable classes
     $cssContent = File::get($this->testCssPath);
-    expect($cssContent)->toContain('body');
-    expect($cssContent)->not->toContain('card');
-    expect($cssContent)->not->toContain('title');
-    expect($cssContent)->not->toContain('label');
+    
+    // Extract just the CSS rules (without comments)
+    preg_match_all('/\.TW-[^\{]+\{([^\}]+)\}/', $cssContent, $matches);
+    $rules = implode(' ', $matches[1]);
+    
+    expect($cssContent)->toContain('@apply hover:shadow-lg p-4 rounded;')
+        ->and($cssContent)->toContain('@apply text-gray-900 text-lg font-bold;')
+        ->and($rules)->not->toContain(' group')
+        ->and($rules)->not->toContain('group-hover')
+        ->and($rules)->not->toContain('peer-checked');
 });
+

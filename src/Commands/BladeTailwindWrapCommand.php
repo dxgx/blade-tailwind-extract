@@ -284,34 +284,46 @@ class BladeTailwindWrapCommand extends Command
                         
                         // Parse and count classes
                         $classes = $this->parseClasses($classList);
-                        if (count($classes) < $minClasses) {
+                        
+                        // Separate reserved classes from extractable classes
+                        $separated = $this->extractor->separateReservedClasses($classes);
+                        $extractableClasses = $separated['extractable'];
+                        $reservedClasses = $separated['reserved'];
+                        
+                        // Check if we should skip based on extractable classes count
+                        if (count($extractableClasses) < $minClasses) {
                             return $stringMatches[0];
                         }
                         
-                        // Check for skip prefix
+                        // Check for skip prefix in extractable classes
                         if (! empty($skipPrefix)) {
-                            foreach ($classes as $class) {
+                            foreach ($extractableClasses as $class) {
                                 if (str_starts_with($class, $skipPrefix)) {
                                     return $stringMatches[0];
                                 }
                             }
                         }
                         
-                        // Generate or reuse wrapper name
-                        $normalizedClassList = $this->normalizeWhitespace($classList);
+                        // Generate or reuse wrapper name (based on extractable classes only)
+                        $extractableClassList = implode(' ', $extractableClasses);
+                        $normalizedClassList = $this->normalizeWhitespace($extractableClassList);
                         if (! isset($this->classListMap[$normalizedClassList])) {
                             $this->classListMap[$normalizedClassList] = $this->generateWrapperName();
                         }
                         $wrapperName = $this->classListMap[$normalizedClassList];
                         
-                        // Wrap the class list
-                        $wrappedClassList = "__{$wrapperName}__ {$classList} __";
+                        // Wrap the extractable classes and append reserved classes
+                        $wrappedClassList = "__{$wrapperName}__ {$extractableClassList} __";
+                        if (!empty($reservedClasses)) {
+                            $wrappedClassList .= ' ' . implode(' ', $reservedClasses);
+                        }
                         
                         // Log the change
                         $this->changeLog[] = [
                             'original' => $classList,
                             'wrapped' => $wrappedClassList,
                             'wrapper' => $wrapperName,
+                            'reserved_moved' => count($reservedClasses),
                         ];
                         
                         return $quote . $wrappedClassList . $quote . $conditionalPart;
@@ -399,34 +411,46 @@ class BladeTailwindWrapCommand extends Command
                     
                     // Parse and count classes
                     $classes = $this->parseClasses($classList);
-                    if (count($classes) < $minClasses) {
+                    
+                    // Separate reserved classes from extractable classes
+                    $separated = $this->extractor->separateReservedClasses($classes);
+                    $extractableClasses = $separated['extractable'];
+                    $reservedClasses = $separated['reserved'];
+                    
+                    // Check if we should skip based on extractable classes count
+                    if (count($extractableClasses) < $minClasses) {
                         return $branchMatches[0];
                     }
                     
-                    // Check for skip prefix
+                    // Check for skip prefix in extractable classes
                     if (! empty($skipPrefix)) {
-                        foreach ($classes as $class) {
+                        foreach ($extractableClasses as $class) {
                             if (str_starts_with($class, $skipPrefix)) {
                                 return $branchMatches[0];
                             }
                         }
                     }
                     
-                    // Generate or reuse wrapper name
-                    $normalizedClassList = $this->normalizeWhitespace($classList);
+                    // Generate or reuse wrapper name (based on extractable classes only)
+                    $extractableClassList = implode(' ', $extractableClasses);
+                    $normalizedClassList = $this->normalizeWhitespace($extractableClassList);
                     if (! isset($this->classListMap[$normalizedClassList])) {
                         $this->classListMap[$normalizedClassList] = $this->generateWrapperName();
                     }
                     $wrapperName = $this->classListMap[$normalizedClassList];
                     
-                    // Wrap the class list
-                    $wrappedClassList = "__{$wrapperName}__ {$classList} __";
+                    // Wrap the extractable classes and append reserved classes
+                    $wrappedClassList = "__{$wrapperName}__ {$extractableClassList} __";
+                    if (!empty($reservedClasses)) {
+                        $wrappedClassList .= ' ' . implode(' ', $reservedClasses);
+                    }
                     
                     // Log the change
                     $this->changeLog[] = [
                         'original' => $classList,
                         'wrapped' => $wrappedClassList,
                         'wrapper' => $wrapperName,
+                        'reserved_moved' => count($reservedClasses),
                     ];
                     
                     return $innerQuote . $wrappedClassList . $innerQuote;
@@ -474,36 +498,46 @@ class BladeTailwindWrapCommand extends Command
         // Parse classes
         $classes = $this->parseClasses($classList);
 
-        // Check if we should skip
-        if (count($classes) < $minClasses) {
+        // Separate reserved classes from extractable classes
+        $separated = $this->extractor->separateReservedClasses($classes);
+        $extractableClasses = $separated['extractable'];
+        $reservedClasses = $separated['reserved'];
+
+        // Check if we should skip based on extractable classes count
+        if (count($extractableClasses) < $minClasses) {
             return $matches[0];
         }
 
-        // Check for skip prefix
+        // Check for skip prefix in extractable classes
         if (! empty($skipPrefix)) {
-            foreach ($classes as $class) {
+            foreach ($extractableClasses as $class) {
                 if (str_starts_with($class, $skipPrefix)) {
                     return $matches[0];
                 }
             }
         }
 
-        // Generate or reuse wrapper name for this class list
+        // Generate or reuse wrapper name for this class list (based on extractable classes only)
         // Normalize whitespace for proper deduplication
-        $normalizedClassList = $this->normalizeWhitespace($classList);
+        $extractableClassList = implode(' ', $extractableClasses);
+        $normalizedClassList = $this->normalizeWhitespace($extractableClassList);
         if (! isset($this->classListMap[$normalizedClassList])) {
             $this->classListMap[$normalizedClassList] = $this->generateWrapperName();
         }
         $wrapperName = $this->classListMap[$normalizedClassList];
 
-        // Wrap the class list
-        $wrappedClassList = "__{$wrapperName}__ {$classList} __";
+        // Wrap the extractable classes and append reserved classes
+        $wrappedClassList = "__{$wrapperName}__ {$extractableClassList} __";
+        if (!empty($reservedClasses)) {
+            $wrappedClassList .= ' ' . implode(' ', $reservedClasses);
+        }
 
         // Log the change
         $this->changeLog[] = [
             'original' => $classList,
             'wrapped' => $wrappedClassList,
             'wrapper' => $wrapperName,
+            'reserved_moved' => count($reservedClasses),
         ];
 
         return $prefix.$wrappedClassList.$suffix;
@@ -554,20 +588,32 @@ class BladeTailwindWrapCommand extends Command
                     'original' => $change['original'],
                     'wrapped' => $change['wrapped'],
                     'count' => 0,
+                    'reserved_moved' => $change['reserved_moved'] ?? 0,
                 ];
             }
             $grouped[$wrapper]['count']++;
         }
 
+        $totalMovedReserved = 0;
         foreach ($grouped as $wrapper => $data) {
             $this->line("<fg=yellow>__{$wrapper}__</> ({$data['count']} occurrence".($data['count'] > 1 ? 's' : '').')');
             $this->line("  <fg=gray>Before:</>  {$data['original']}");
             $this->line("  <fg=green>After:</>   {$data['wrapped']}");
+            
+            if ($data['reserved_moved'] > 0) {
+                $this->line("  <fg=cyan>ℹ Moved {$data['reserved_moved']} reserved class" . ($data['reserved_moved'] > 1 ? 'es' : '') . " outside wrapper</>");
+                $totalMovedReserved += $data['reserved_moved'] * $data['count'];
+            }
+            
             $this->line('');
         }
 
         $totalChanges = count($this->changeLog);
         $uniqueWrappers = count($grouped);
         $this->info("Total: {$totalChanges} class list".($totalChanges > 1 ? 's' : '')." wrapped with {$uniqueWrappers} unique wrapper".($uniqueWrappers > 1 ? 's' : ''));
+        
+        if ($totalMovedReserved > 0) {
+            $this->line("<fg=cyan>ℹ {$totalMovedReserved} reserved class" . ($totalMovedReserved > 1 ? 'es' : '') . " moved to maintain parent-child selectors</>");
+        }
     }
 }

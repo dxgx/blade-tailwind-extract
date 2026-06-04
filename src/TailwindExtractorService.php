@@ -373,6 +373,59 @@ class TailwindExtractorService
     }
 
     /**
+     * Check if a single class is reserved
+     */
+    protected function isReservedClass(string $class): bool
+    {
+        foreach ($this->reservedClasses as $reservedClass) {
+            // Check for exact class match (e.g., "group")
+            if ($class === $reservedClass) {
+                return true;
+            }
+            
+            // Check for named group variants with slash (e.g., "group/sidebar")
+            if (str_starts_with($class, $reservedClass . '/')) {
+                return true;
+            }
+            
+            // Check for dash-colon variants (e.g., "group-hover:", "peer-focus:")
+            if (preg_match('/^' . preg_quote($reservedClass, '/') . '-\w+:/', $class)) {
+                return true;
+            }
+            
+            // Check for dash-slash variants (e.g., "group-hover/sidebar:bg-blue-50")
+            if (preg_match('/^' . preg_quote($reservedClass, '/') . '-\w+\//', $class)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Separate reserved classes from extractable classes
+     * Returns ['extractable' => [...], 'reserved' => [...]]
+     */
+    public function separateReservedClasses(array $classes): array
+    {
+        $extractable = [];
+        $reserved = [];
+
+        foreach ($classes as $class) {
+            if ($this->isReservedClass($class)) {
+                $reserved[] = $class;
+            } else {
+                $extractable[] = $class;
+            }
+        }
+
+        return [
+            'extractable' => $extractable,
+            'reserved' => $reserved,
+        ];
+    }
+
+    /**
      * Validate that @apply content only contains valid characters
      */
     protected function assertValidApplyContent(string $apply, string $name, string $file, string $originalContent = ''): void
@@ -437,41 +490,56 @@ class TailwindExtractorService
 
                     $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                    $skipReason = null;
-                    if ($this->containsReservedClasses($apply, $skipReason)) {
-                        // Track skipped pattern
+                    // Parse classes and separate reserved from extractable
+                    $classes = preg_split('/\s+/', trim($apply));
+                    $separated = $this->separateReservedClasses($classes);
+                    $extractableClasses = $separated['extractable'];
+                    $reservedClasses = $separated['reserved'];
+
+                    // If no extractable classes remain, skip this pattern
+                    if (empty($extractableClasses)) {
+                        $skipReason = "only contains reserved classes";
                         $skippedPatterns[] = [
                             'file' => $file,
                             'name' => $name,
                             'classes' => $apply,
                             'reason' => $skipReason,
                         ];
-                        // Return original content without modification
                         return $matches[0];
                     }
 
+                    // Use only extractable classes for CSS rule
+                    $extractableApply = implode(' ', $extractableClasses);
                     $cssClass = $this->classPrefix . '-' . $fileHash . '-' . $name;
 
-                    if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $apply) {
+                    if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $extractableApply) {
                         throw new RuntimeException(
                             "Duplicate class name with different content!\n" .
                             "   Class: .$cssClass\n" .
                             "   File: $file\n" .
                             "   First occurrence: @apply {$classRegistry[$cssClass]};\n" .
-                            "   Current occurrence: @apply $apply;"
+                            "   Current occurrence: @apply $extractableApply;"
                         );
                     }
 
                     if (! isset($classRegistry[$cssClass])) {
-                        $classRegistry[$cssClass] = $apply;
+                        $classRegistry[$cssClass] = $extractableApply;
 
-                        if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $apply) {
-                            $newRules[$cssClass] = $apply;
+                        if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $extractableApply) {
+                            $newRules[$cssClass] = $extractableApply;
                             $fileSpecificRules[] = $cssClass;
                         }
                     }
 
-                    $classes = trim($before . ' ' . $cssClass . ' ' . $after);
+                    // Build output with reserved classes after the generated class
+                    $allClasses = array_merge(
+                        $before !== '' ? [$before] : [],
+                        [$cssClass],
+                        $reservedClasses,
+                        $after !== '' ? [$after] : []
+                    );
+
+                    $classes = implode(' ', array_filter($allClasses));
 
                     return 'class="' . preg_replace('/\s+/', ' ', $classes) . '"';
                 },
@@ -516,9 +584,15 @@ class TailwindExtractorService
 
                         $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                        $skipReason = null;
-                        if ($this->containsReservedClasses($apply, $skipReason)) {
-                            // Track skipped pattern
+                        // Parse classes and separate reserved from extractable
+                        $classes = preg_split('/\s+/', trim($apply));
+                        $separated = $this->separateReservedClasses($classes);
+                        $extractableClasses = $separated['extractable'];
+                        $reservedClasses = $separated['reserved'];
+
+                        // If no extractable classes remain, skip this pattern
+                        if (empty($extractableClasses)) {
+                            $skipReason = "only contains reserved classes";
                             $skippedPatterns[] = [
                                 'file' => $file,
                                 'name' => $name,
@@ -528,24 +602,34 @@ class TailwindExtractorService
                             return $quoteMatches[0];
                         }
 
+                        // Use only extractable classes for CSS rule
+                        $extractableApply = implode(' ', $extractableClasses);
                         $cssClass = $this->classPrefix . '-' . $fileHash . '-' . $name;
 
-                        if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $apply) {
+                        if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $extractableApply) {
                             throw new RuntimeException(
                                 "Duplicate class name with different content in $file"
                             );
                         }
 
                         if (! isset($classRegistry[$cssClass])) {
-                            $classRegistry[$cssClass] = $apply;
+                            $classRegistry[$cssClass] = $extractableApply;
 
-                            if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $apply) {
-                                $newRules[$cssClass] = $apply;
+                            if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $extractableApply) {
+                                $newRules[$cssClass] = $extractableApply;
                                 $fileSpecificRules[] = $cssClass;
                             }
                         }
 
-                        $classes = trim($before . ' ' . $cssClass . ' ' . $after);
+                        // Build output with reserved classes after the generated class
+                        $allClasses = array_merge(
+                            $before !== '' ? [$before] : [],
+                            [$cssClass],
+                            $reservedClasses,
+                            $after !== '' ? [$after] : []
+                        );
+
+                        $classes = implode(' ', array_filter($allClasses));
                         $cleanClasses = preg_replace('/\s+/', ' ', $classes);
 
                         return $quote . $cleanClasses . $endQuote;
@@ -592,9 +676,15 @@ class TailwindExtractorService
 
                         $this->assertValidApplyContent($apply, $name, $file, $originalContent);
 
-                        $skipReason = null;
-                        if ($this->containsReservedClasses($apply, $skipReason)) {
-                            // Track skipped pattern
+                        // Parse classes and separate reserved from extractable
+                        $classes = preg_split('/\s+/', trim($apply));
+                        $separated = $this->separateReservedClasses($classes);
+                        $extractableClasses = $separated['extractable'];
+                        $reservedClasses = $separated['reserved'];
+
+                        // If no extractable classes remain, skip this pattern
+                        if (empty($extractableClasses)) {
+                            $skipReason = "only contains reserved classes";
                             $skippedPatterns[] = [
                                 'file' => $file,
                                 'name' => $name,
@@ -604,24 +694,34 @@ class TailwindExtractorService
                             return $quoteMatches[0];
                         }
 
+                        // Use only extractable classes for CSS rule
+                        $extractableApply = implode(' ', $extractableClasses);
                         $cssClass = $this->classPrefix . '-' . $fileHash . '-' . $name;
 
-                        if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $apply) {
+                        if (isset($classRegistry[$cssClass]) && $classRegistry[$cssClass] !== $extractableApply) {
                             throw new RuntimeException(
                                 "Duplicate class name with different content in $file"
                             );
                         }
 
                         if (! isset($classRegistry[$cssClass])) {
-                            $classRegistry[$cssClass] = $apply;
+                            $classRegistry[$cssClass] = $extractableApply;
 
-                            if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $apply) {
-                                $newRules[$cssClass] = $apply;
+                            if (! isset($existingRules[$cssClass]) || $existingRules[$cssClass] !== $extractableApply) {
+                                $newRules[$cssClass] = $extractableApply;
                                 $fileSpecificRules[] = $cssClass;
                             }
                         }
 
-                        $classes = trim($before . ' ' . $cssClass . ' ' . $after);
+                        // Build output with reserved classes after the generated class
+                        $allClasses = array_merge(
+                            $before !== '' ? [$before] : [],
+                            [$cssClass],
+                            $reservedClasses,
+                            $after !== '' ? [$after] : []
+                        );
+
+                        $classes = implode(' ', array_filter($allClasses));
                         $cleanClasses = preg_replace('/\s+/', ' ', $classes);
 
                         return $quote . $cleanClasses . $endQuote . $condition;
