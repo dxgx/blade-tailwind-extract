@@ -10,10 +10,10 @@ A Laravel package that dramatically reduces Livewire component wire transfer siz
 
 This package powers the following projects:
 
-- [deadsimpleapps.com](https://deadsimpleapps.com)
-- [tvfilmai.lt](https://tvfilmai.lt)
-- [flyfiles.io](https://flyfiles.io)
-- [advertgates.eu](https://advertgates.eu)
+- [DeadSimpleApps.com — well dead simple apps for smart people](https://deadsimpleapps.com)
+- [tvfilmai.lt - tv filmų programa ir gidas](https://tvfilmai.lt)
+- [FlyFiles.io - share files with pin](https://flyfiles.io)
+- [AdvertGates.eu - car seller management and export system](https://advertgates.eu)
 
 ## The Problem
 

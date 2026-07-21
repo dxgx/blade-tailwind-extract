@@ -1,0 +1,7 @@
+.TW-242f-gr-lstitm-wrp {
+    @apply bg-red-500 text-white;
+}
+
+.TW-242f-gr-lstitm-wrp-mob {
+    @apply bg-blue-500 text-black;
+}
