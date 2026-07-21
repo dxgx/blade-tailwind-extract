@@ -2,6 +2,11 @@
 
 All notable changes to `blade-tailwind-extract` will be documented in this file.
 
+## 2.5.2 - 2026-07-21
+
+### Changed
+- Updated README with "Used In Production" section listing deadsimpleapps.com, tvfilmai.lt, flyfiles.io, advertgates.eu
+
 ## 2.5.0 - 2026-06-05
 
 ### Added
