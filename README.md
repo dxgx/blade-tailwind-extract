@@ -6,6 +6,15 @@
 
 A Laravel package that dramatically reduces Livewire component wire transfer sizes by extracting long Tailwind CSS class strings into short, reusable CSS class names. Perfect for applications with large lists of Livewire components.
 
+## Used In Production
+
+This package powers the following projects:
+
+- [deadsimpleapps.com](https://deadsimpleapps.com)
+- [tvfilmai.lt](https://tvfilmai.lt)
+- [flyfiles.io](https://flyfiles.io)
+- [advertgates.eu](https://advertgates.eu)
+
 ## The Problem
 
 When using Livewire with Tailwind CSS, long class strings in Blade templates get transferred over the wire on every component update:
